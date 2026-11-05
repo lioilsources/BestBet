@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS fixture_links;
+DROP TABLE IF EXISTS odds_snapshots;
+DROP TABLE IF EXISTS goalies;
+DROP TABLE IF EXISTS games;
+DROP TABLE IF EXISTS team_aliases;
+DROP TABLE IF EXISTS teams;
+DROP TABLE IF EXISTS leagues;

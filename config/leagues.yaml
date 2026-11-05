@@ -1,0 +1,85 @@
+# M0 hockey leagues (plan §1.4.5). Order = rollout order.
+# season = start year: 2025 means 2025/26.
+# apihockey.id: 0 means "resolve by search on first run" (`ingest-hockey leagues`), then write the id here.
+# OT formats and play-off formats change: verify every season (plan §1.4.7).
+seasons: [2023, 2024, 2025, 2026]
+
+leagues:
+  - slug: swe-allsvenskan
+    name: HockeyAllsvenskan
+    country: Sweden
+    role: fringe
+    tz: Europe/Stockholm
+    ot: {regular: 3v3_5, playoff: 5v5_20}
+    apihockey: {search: HockeyAllsvenskan, country: Sweden}
+    oddspapi: {search: Allsvenskan, category: Sweden}
+    swehockey:
+      - {season: 2023, schedule_id: 14678, stage: Regular Season}
+      - {season: 2023, schedule_id: 15784, stage: Slutspel}
+      - {season: 2023, schedule_id: 15783, stage: Play Out}
+      - {season: 2024, schedule_id: 15986, stage: Regular Season}
+      - {season: 2024, schedule_id: 17571, stage: Slutspel}
+      - {season: 2024, schedule_id: 17570, stage: Play Out}
+      - {season: 2025, schedule_id: 18266, stage: Regular Season}
+      - {season: 2025, schedule_id: 19979, stage: Slutspel}
+      - {season: 2025, schedule_id: 19978, stage: Play Out}
+      - {season: 2026, schedule_id: 20962, stage: Regular Season}
+
+  # Czech second tier. Feeds often still call it "Chance liga"; "Chance Liga" today is football.
+  - slug: cze-maxa
+    name: Maxa liga
+    country: Czech-Republic
+    role: fringe
+    tz: Europe/Prague
+    ot: {regular: 3v3_5, playoff: 5v5_20}
+    apihockey: {search: "1. Liga", country: Czech-Republic, alt: ["Chance Liga", "Maxa Liga"]}
+    oddspapi: {search: "1. Liga", category: Czech}
+
+  - slug: svk-extraliga
+    name: Tipos extraliga
+    country: Slovakia
+    role: fringe
+    tz: Europe/Bratislava
+    ot: {regular: 3v3_5, playoff: 5v5_20}
+    apihockey: {search: Extraliga, country: Slovakia}
+    oddspapi: {search: Extraliga, category: Slovakia}
+
+  - slug: ger-del2
+    name: DEL2
+    country: Germany
+    role: fringe
+    tz: Europe/Berlin
+    ot: {regular: 3v3_5, playoff: 5v5_20}
+    apihockey: {search: DEL2, country: Germany}
+    oddspapi: {search: DEL 2, category: Germany}
+
+  - slug: cze-extraliga
+    name: Extraliga
+    country: Czech-Republic
+    role: semi_efficient
+    tz: Europe/Prague
+    ot: {regular: 3v3_5, playoff: 5v5_20}
+    apihockey: {search: Extraliga, country: Czech-Republic}
+    oddspapi: {search: Extraliga, category: Czech}
+
+  - slug: swe-shl
+    name: SHL
+    country: Sweden
+    role: semi_efficient
+    tz: Europe/Stockholm
+    ot: {regular: 3v3_5, playoff: 5v5_20}
+    apihockey: {search: SHL, country: Sweden}
+    oddspapi: {search: SHL, category: Sweden}
+
+  - slug: nhl
+    name: NHL
+    country: USA
+    role: control
+    tz: America/New_York
+    # NHL play-off OT is 5v5 20-minute periods; the shootout exists only in the regular season.
+    ot: {regular: 3v3_5, playoff: 5v5_20}
+    apihockey: {search: NHL, country: USA}
+    oddspapi: {search: NHL, category: USA}
+
+# Manual spellings that fuzzy matching cannot resolve: source -> league -> alias -> canonical name.
+aliases: {}
