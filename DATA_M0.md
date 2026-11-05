@@ -1,0 +1,32 @@
+# DATA_M0 — pokrytí dat (hokej)
+
+Vygenerováno `ingest-hockey report` 2026-11-05 06:19 UTC. Soubor je generovaný, ručně ho neupravuj; komentáře patří do `docs/M0.md`.
+
+## Souhrn per liga
+
+| Liga | Role | Sezon | Zápasů | S kurzy | S brankáři | Marže 1X2 | Marže ML | Knih | Join | Skóre M1 | Neprošlo |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| HockeyAllsvenskan | fringe | 4 | 1352 | 0 % | 96 % | — | — | 0 | — | — | knih 0 < 5 |
+
+## Doporučení pro M1
+
+Žádná okrajová liga zatím neprošla branami (≥ 3 sezony, ≥ 5 knih, join ≥ 98 %). Viz sloupec „Neprošlo“.
+
+## Sezony
+
+| Liga | Sezona | Zápasů | S kurzy | S brankáři | Mimo základní část | Po 60 min nerozhodnuto |
+|---|---|---|---|---|---|---|
+| HockeyAllsvenskan | 2023/24 | 409 | 0 | 408 | 45 | 90 |
+| HockeyAllsvenskan | 2024/25 | 415 | 0 | 414 | 51 | 103 |
+| HockeyAllsvenskan | 2025/26 | 410 | 0 | 364 | 46 | 88 |
+| HockeyAllsvenskan | 2026/27 | 118 | 0 | 117 | 0 | 28 |
+
+## Trhy v kurzech
+
+| Liga | Trh | Zápasů | Knih |
+|---|---|---|---|
+
+## Join klíče per zdroj
+
+| Liga | Zdroj | Fixtures | Spárováno | Podíl |
+|---|---|---|---|---|

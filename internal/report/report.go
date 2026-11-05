@@ -127,7 +127,7 @@ func Summarise(d Data) []LeagueSummary {
 			s.Gates = append(s.Gates, fmt.Sprintf("knih %d < %d", s.Books, MinBooks))
 		}
 		if !math.IsNaN(s.JoinRate) && s.JoinRate < MinJoinRate {
-			s.Gates = append(s.Gates, fmt.Sprintf("join %.1f %% < 98 %%", 100*s.JoinRate))
+			s.Gates = append(s.Gates, czDecimal(fmt.Sprintf("join %.1f %% < 98 %%", 100*s.JoinRate)))
 		}
 		if s.Role == "fringe" && len(s.Gates) == 0 {
 			s.Score = 0.4*s.OddsCov + 0.4*s.GoalieCov + 0.2*math.Min(float64(s.Books)/MinBooks, 1)
@@ -211,11 +211,13 @@ func Render(d Data) string {
 
 func pct(v float64) string { return fmt.Sprintf("%.0f %%", 100*v) }
 
+func czDecimal(s string) string { return strings.Replace(s, ".", ",", 1) }
+
 func pctNaN(v float64) string {
 	if math.IsNaN(v) {
 		return "—"
 	}
-	return fmt.Sprintf("%.1f %%", 100*v)
+	return czDecimal(fmt.Sprintf("%.1f %%", 100*v))
 }
 
 func score(s LeagueSummary) string {
@@ -225,5 +227,5 @@ func score(s LeagueSummary) string {
 	if s.Score == 0 {
 		return "—"
 	}
-	return fmt.Sprintf("%.2f", s.Score)
+	return czDecimal(fmt.Sprintf("%.2f", s.Score))
 }

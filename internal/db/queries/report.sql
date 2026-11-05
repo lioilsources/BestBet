@@ -64,11 +64,18 @@ GROUP BY l.slug, o.market
 ORDER BY l.slug, o.market;
 
 -- name: JoinRateBySource :many
+-- A join counts only against another source: a swehockey row is matched when its
+-- game also has an API-HOCKEY id, and is counted only once the league has API games.
 SELECT l.slug, f.source,
        count(*)::bigint AS fixtures,
-       count(f.game_id)::bigint AS matched
+       count(*) FILTER (
+           WHERE f.game_id IS NOT NULL AND (f.source <> 'swehockey' OR g.apihockey_id IS NOT NULL)
+       )::bigint AS matched
 FROM fixture_links f
 JOIN leagues l ON l.id = f.league_id
+LEFT JOIN games g ON g.id = f.game_id
+WHERE f.source <> 'swehockey'
+   OR EXISTS (SELECT 1 FROM games g2 WHERE g2.league_id = f.league_id AND g2.apihockey_id IS NOT NULL)
 GROUP BY l.slug, f.source
 ORDER BY l.slug, f.source;
 
