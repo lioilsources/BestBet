@@ -7,7 +7,8 @@ jednotlivých stadionech, domácí zápasy vs. „venkovní tour“.
 
 Tohle je **fanouškovská vrstva** appky. Je to to, co uživatel otevře každý
 den i bez zápasu, a je to místo, kde se vlna, absence a lavička z modelu
-(`01_PLAN_PRO_OPUS.md`, §2.1) stávají viditelnými věcmi, ne čísly. Zároveň
+(`../00-VLNA_PLAN.md` §3.1 a §1.4.5; podrobněji `01_PLAN_PRO_OPUS.md` §2.1)
+stávají viditelnými věcmi, ne čísly. Zároveň
 je to past: většina z toho je pro predikci šum a nesmí to do modelu
 prosakovat jinak, než je níž napsané.
 
@@ -116,7 +117,7 @@ ne obecné „útočník“.
   nahoru a kolik to stojí. Dopad absence B se počítá jako
   `w[B] − w[náhradník] + Σ_A chem[A,B]`, kde `chem[A,B]` je regularizovaný
   rozdíl výkonu A spolu s B vs. bez B (stav 2 a 3), smrštěný k nule podle
-  počtu minut. Jestli ablace ve fázi 2 ukáže, že `chem` log‑loss nezlepšuje,
+  počtu minut. Jestli ablace v M1 ukáže, že `chem` log‑loss nezlepšuje,
   zůstává jen na obrazovce a z modelu jde ven.
 
 ### 2.4 Trenéři a vedení
@@ -225,18 +226,24 @@ brankářů (0,850–0,950), kde to je řečeno v popisku.
 - Notifikace **jen** informační a vypnutelné po typu: potvrzená sestava /
   startující brankář (60 min před), změna statusu klíčového hráče, změna
   trenéra. **Nikdy** notifikace s kurzem nebo s doporučením sázky; to je
-  hranice z `01_PLAN_PRO_OPUS.md`, §1 „Co appka nikdy nedělá“.
+  hranice z `../00-VLNA_PLAN.md` §0 bod 1 a §5 (compliance), podrobněji
+  `01_PLAN_PRO_OPUS.md` §1 „Co appka nikdy nedělá“.
 
-## 7. Zařazení do fází
+## 7. Zařazení do milníků (podle `../00-VLNA_PLAN.md` §6)
 
-| Co | Fáze | Důvod |
+Plán 00 začíná hokejem a okrajovými ligami (§1.4.5): HockeyAllsvenskan,
+Maxa liga, Tipos extraliga, DEL2; Extraliga a SHL jako poloefektivní
+kontrola, NHL jako efektivní kontrola. Tomu odpovídá i pořadí dat tady.
+
+| Co | Milník | Důvod a poznámka k ligám |
 |---|---|---|
-| Datový model (§3) a ingest kádrů, statistik hráčů, trenérů pro NHL a top 5 | **2** (spolu s absencemi) | Model absencí ty data potřebuje tak jako tak. |
-| Společný čas dvojic/lajn (`UnitMatch`) pro NHL z shift chartů | **2** | Je to vstup pro `w[náhradník]`; ablace rozhodne, zda zůstane. |
-| WOWY a `chem[A,B]` (`DuoMatch`) pro NHL; stav „chybí“ i pro Extraligu | **2** | Člen dopadu absence; ablace rozhodne. Na obrazovce zůstane i když z modelu vypadne. |
-| Obrazovka Přehled + Kádr + Trenér (zjednodušená) | **5** (MVP) | Bez ní je appka jen seznam zápasů. |
-| Pětky, brankářské dvojice, Historie, Stadiony, grafy | **6** | Retence. Vedle deníku to je důvod otevřít appku bez zápasu. |
-| Extraliga lajny, Chance Liga xG | **8** nebo nikdy | Závisí na datech, která dnes nejsou. |
+| Rozšíření schématu M0 (`games`, `goalies`, `odds_snapshots`) o `Player`, `PlayerMatchStats`, `PlayerAbsenceGame`, `Coach`, `CoachTenure` (§3); ingest sestav a brankářů ze swehockey/ceskyhokej | **M0** (dokončení) | Swehockey i zápisy hokej.cz dávají sestavy včetně brankáře; stav „partner chybí“ pro WOWY je z nich zdarma. Bez toho M1 nemá lineup delta. |
+| `Unit`/`UnitMatch` (pětky z zápisu, společný čas jen hrubě) pro Allsvenskan a Maxa ligu; přesně (shift charty) pro NHL | **M1** | Vstup pro `w[náhradník]`; ablace per liga s FDR (00 §1.4.6) rozhodne, zda zůstane. |
+| `Duo`/`DuoMatch`, WOWY a `chem[A,B]`: tři stavy pro NHL, dva stavy („spolu“ ze zápisu, „chybí“) pro evropské ligy | **M1** | Člen dopadu absence. V 00 je gólman hlavní signál (§1.4.5); dvojice bruslařů je druhá vrstva a reportuje se zvlášť, stejně jako vrstva „gólman“. Na obrazovce zůstane, i když z modelu vypadne. |
+| Režim C (vlastní účet, ledger) | **M2** | Tým a dvojice se tu neukazují; jen `goalie_delta` a dopad absence v ledgeru, aby šlo zpětně ověřit, co model věděl. |
+| Obrazovka **Soupiska** (00 §4.1 bod 3) = Kádr a lavička (§2.2) + „Kdo chybí“ z Přehledu (§2.1); hokejová obrazovka **Brankáři** (00 §1.4.6) = brankářská dvojice (§2.3) se stavem `UNCONFIRMED → EXPECTED → CONFIRMED` | **M3** (Flutter MVP) | Odpovídá přesně tomu, co 00 chce jako první dvě obrazovky po „Dnes“. Trenér jen jako řádek v hlavičce. |
+| Oblíbený tým jako samostatná obrazovka: Přehled, Trenéři, Historie, Stadiony a tour, pětky a WOWY, grafy (§2.3–2.6, §5) | **M3+** (retenční iterace po TestFlightu; v 00 §6 není, navrhuji doplnit jako **M3b** s exit kritériem D30 ≥ 40 % u testovací skupiny) | Vedle „Můj tip“ a ledgeru je to důvod otevřít appku bez zápasu. |
+| Lajny Extraligy a Maxa ligy s časem na ledě, xG pro evropské ligy | **po M4** nebo nikdy | Závisí na datech, která dnes nejsou (Sportradar jen při B2B zájmu, 00 §1.4.5). |
 
 ## 8. Co se nesmí stát
 
@@ -250,4 +257,5 @@ brankářů (0,850–0,950), kde to je řečeno v popisku.
   tým prohrává“ bez vzorku je zakázaný výstup stejně jako „75 % úspěšnost“
   v plánu.
 - Žádný řebříček „nejlepší hráč“ nad rámec statistik poskytovatele;
-  vlastní rating hráče vymýšlet nebudeme, dokud model neprojde G1.
+  vlastní rating hráče vymýšlet nebudeme, dokud model neprojde exit
+  kritériem M1 (00 §6).

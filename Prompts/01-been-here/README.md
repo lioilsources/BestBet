@@ -31,5 +31,8 @@ tahle sada je doplněk a kde se liší, platí 00.
 - **Kombinace 1/5/10 a denní top bety** z 00 §1.4 tu nejsou; 01 má strop
   5 doporučení denně a bez pushů.
 
-Fáze a čísla obrazovek v 06 a 07 odkazují na fáze z 01. Při převzetí do
-plánu je přemapovat na milníky M0–M… z 00 §6.
+Fáze z 01 jsou v 06 §7 a 07 §7 **přemapované na milníky M0–M4 z 00 §6**
+(2026-11-06): datový model do dokončení M0, WOWY a dekompozice do M1,
+Soupiska/Brankáři a záložka Srovnání do M3, plný Oblíbený tým jako navržený
+M3b. Zbytek textu 01–05 fáze stále používá; převodník: fáze 1–3 ≈ M0–M1,
+fáze 4–5 ≈ M3, fáze 6 ≈ M3b, fáze 7 ≈ M4, fáze 8 ≈ po M4.

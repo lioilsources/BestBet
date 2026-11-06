@@ -4,8 +4,9 @@ Zadání (2026-11-05): side‑by‑side srovnání dvou týmů, které proti sob
 nastoupí, s návrhy a zvýrazněním statistik, které dávají jednomu týmu
 konkurenční výhodu.
 
-Obrazovka je druhá záložka detailu zápasu (`01_PLAN_PRO_OPUS.md` §1,
-obrazovka 1 „Zápas“ má záložky *Vlny*, **Srovnání**, *Trhy*). Čerpá
+Obrazovka je druhá záložka obrazovky **Zápas** (`../00-VLNA_PLAN.md` §4.1
+bod 2): záložky *Vlny*, **Srovnání**, *Trhy*. Karty „Co rozhoduje“ jsou
+UI pro „vysvětlení (SHAP‑like příspěvky vlny)“ z 00 §3.1. Čerpá
 z datového modelu týmu (`06_DETAIL_TYMU.md`) a z výstupu modelu zápasu.
 Nic nového nepočítá, jen vybírá a ukazuje.
 
@@ -154,14 +155,16 @@ vzorkem, např.:
   liga a sezona; prvních 5 kol sezony se mísí s minulou sezonou s vahou
   klesající podle počtu odehraných kol.
 
-## 7. Zařazení do fází
+## 7. Zařazení do milníků (podle `../00-VLNA_PLAN.md` §6)
 
-| Co | Fáze |
-|---|---|
-| Dekompozice příspěvků v modelu (`contributions`) | **3** (patří k modelu trhů; zároveň je to vývojářský nástroj pro ablace) |
-| `metrics.yaml`, ligová rozdělení, endpoint `/compare` | **4** |
-| Obrazovka Srovnání s bloky Forma, Absence, Brankáři/Sestava, Prostředí a kartami „Co rozhoduje“ | **5** (MVP) — je to obrazovka, kterou uživatel otevře před každým zápasem |
-| Pětky, WOWY, Styl, Historie, Disciplína | **6** |
+| Co | Milník | Poznámka |
+|---|---|---|
+| Dekompozice příspěvků (`contributions`) jako součást výstupu modelu | **M1** | V 00 §3.1 je už jako „vysvětlení (SHAP‑like příspěvky vlny)“. Zároveň je to nástroj pro ablace per liga a pro samostatný report vrstvy „gólman“ (00 §1.4.6). |
+| Ligová rozdělení metrik (medián, směrodatná odchylka per liga a sezona) | **M1** | Počítají se z téže tabulky zápasů jako backtest; Allsvenskan, Maxa liga, Tipos extraliga, DEL2, NHL. |
+| `metrics.yaml`, endpoint `/compare` v Go backendu | **M3** (backend část MVP) | 00 nemá samostatný backendový milník; Flutter MVP ho předpokládá. |
+| Záložka Srovnání s bloky Forma, Absence, **Brankáři**, Speciální formace, Prostředí a kartami „Co rozhoduje“ | **M3** (Flutter MVP) | Hokejové bloky první (00 §1.4.5); fotbalové bloky až s druhým sportem. Blok Brankáři ukazuje `goalie_delta` a stav potvrzení. |
+| Pětky, WOWY, Styl, Historie, Disciplína | **M3+** (retenční iterace, viz `06_DETAIL_TYMU.md` §7) | |
+| Play‑off: karta „Stav série“ (číslo zápasu, vedení, eliminace, pořadí ledu) a blok Historie rozšířený o sérii | **M1‑playoff → M3** | 00 §1.4.7: play‑off má vlastní multiplikátory a simulátor série; karta vzniká z jeho výstupu, ne z H2H. |
 
 ## 8. Test akceptace
 
