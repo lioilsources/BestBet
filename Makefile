@@ -15,6 +15,7 @@ fmt:
 
 build:
 	CGO_ENABLED=0 go build -o bin/ingest-hockey ./cmd/ingest-hockey
+	CGO_ENABLED=0 go build -o bin/backtest ./cmd/backtest
 
 db:
 	docker compose up -d db

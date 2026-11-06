@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS journal;
+DROP TABLE IF EXISTS predictions;
+DROP TABLE IF EXISTS duo_matches;
+DROP TABLE IF EXISTS duos;
+DROP TABLE IF EXISTS unit_matches;
+DROP TABLE IF EXISTS units;
+DROP TABLE IF EXISTS coach_tenures;
+DROP TABLE IF EXISTS coaches;
+DROP TABLE IF EXISTS player_absence_games;
+DROP TABLE IF EXISTS player_match_stats;
+DROP TABLE IF EXISTS player_sources;
+DROP TABLE IF EXISTS players;

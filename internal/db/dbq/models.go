@@ -5,8 +5,49 @@
 package dbq
 
 import (
+	"encoding/json"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type Coach struct {
+	ID          int32
+	Name        string
+	BirthDate   pgtype.Date
+	Nationality *string
+}
+
+type CoachTenure struct {
+	CoachID  int32
+	TeamID   int32
+	Role     string
+	FromDate pgtype.Date
+	ToDate   pgtype.Date
+	Source   string
+}
+
+type Duo struct {
+	ID      int32
+	TeamID  int32
+	PlayerA int32
+	PlayerB int32
+}
+
+type DuoMatch struct {
+	DuoID  int32
+	GameID int64
+	State  string
+	Toi    *int32
+	Gf     *int32
+	Ga     *int32
+	Xgf    *float64
+	Xga    *float64
+	Cf     *int32
+	Ca     *int32
+	PtsA   *int32
+	PtsB   *int32
+	Source string
+}
 
 type FixtureLink struct {
 	Source          string
@@ -64,6 +105,23 @@ type Goaly struct {
 	Source        string
 }
 
+type Journal struct {
+	ID           int64
+	UserKey      string
+	GameID       *int64
+	Book         string
+	Market       string
+	Selection    string
+	Line         *float64
+	Price        float64
+	Stake        float64
+	PlacedAt     pgtype.Timestamptz
+	ModelP       *float64
+	ClosingPrice *float64
+	Result       *string
+	Note         *string
+}
+
 type League struct {
 	ID                   int32
 	Slug                 string
@@ -91,6 +149,63 @@ type OddsSnapshot struct {
 	CapturedAt      pgtype.Timestamptz
 }
 
+type Player struct {
+	ID          int32
+	Name        string
+	NameNorm    string
+	BirthDate   pgtype.Date
+	Nationality *string
+	Position    *string
+	Shoots      *string
+	CreatedBy   string
+	CreatedAt   pgtype.Timestamptz
+}
+
+type PlayerAbsenceGame struct {
+	PlayerID int32
+	GameID   int64
+	TeamID   int32
+	Reason   string
+	Source   string
+}
+
+type PlayerMatchStat struct {
+	PlayerID   int32
+	GameID     int64
+	TeamID     int32
+	Side       string
+	Jersey     *int32
+	Position   *string
+	LineNo     *int32
+	ToiSeconds *int32
+	Goals      *int32
+	Assists    *int32
+	PlusMinus  *int32
+	Shots      *int32
+	Pim        *int32
+	Source     string
+}
+
+type PlayerSource struct {
+	Source         string
+	SourcePlayerID string
+	PlayerID       int32
+}
+
+type Prediction struct {
+	ID            int64
+	GameID        int64
+	Kind          string
+	ModelVersion  string
+	InputsHash    string
+	ComputedAt    pgtype.Timestamptz
+	LambdaHome    float64
+	LambdaAway    float64
+	ScoreMatrix   json.RawMessage
+	Markets       json.RawMessage
+	Contributions []byte
+}
+
 type Team struct {
 	ID          int32
 	LeagueID    int32
@@ -106,4 +221,24 @@ type TeamAlias struct {
 	LeagueID  int32
 	AliasNorm string
 	TeamID    int32
+}
+
+type Unit struct {
+	ID      int32
+	TeamID  int32
+	Kind    string
+	Members []int32
+}
+
+type UnitMatch struct {
+	UnitID      int32
+	GameID      int64
+	ToiTogether *int32
+	Gf          *int32
+	Ga          *int32
+	Xgf         *float64
+	Xga         *float64
+	Cf          *int32
+	Ca          *int32
+	Source      string
 }
