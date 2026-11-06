@@ -271,15 +271,22 @@ func (m *Model) OTHomeWin(home, away int32) float64 {
 // Predict returns the full prediction for a match.
 func (m *Model) Predict(match canon.Match) (canon.Prediction, error) {
 	lh, la := m.Lambdas(match.HomeTeam, match.AwayTeam)
+	return m.PredictLambdas(match, lh, la, nil)
+}
+
+// PredictLambdas builds the prediction from given regulation intensities (layers
+// on top of the baseline adjust λ and call this). extra goes into the inputs hash.
+func (m *Model) PredictLambdas(match canon.Match, lh, la float64, extra any) (canon.Prediction, error) {
 	reg := Matrix(lh, la, m.Cfg.MaxGoals, m.Delta)
 	p1 := Matrix(lh*m.Profile[0], la*m.Profile[0], m.Cfg.MaxGoals, 0)
 	ot := m.OTHomeWin(match.HomeTeam, match.AwayTeam)
 	hash, err := canon.HashInputs(struct {
-		V    string
-		AsOf time.Time
-		N    int
-		H, A int32
-	}{Version, m.AsOf, m.NGames, match.HomeTeam, match.AwayTeam})
+		V     string
+		AsOf  time.Time
+		N     int
+		H, A  int32
+		Extra any
+	}{Version, m.AsOf, m.NGames, match.HomeTeam, match.AwayTeam, extra})
 	if err != nil {
 		return canon.Prediction{}, err
 	}
@@ -289,6 +296,26 @@ func (m *Model) Predict(match canon.Match) (canon.Prediction, error) {
 		Markets: markets.Derive(reg, p1, ot),
 	}, nil
 }
+
+// Weight is the time weight of a game played at t for a model fitted at asOf.
+func (m *Model) Weight(t time.Time) float64 {
+	return math.Pow(0.5, m.AsOf.Sub(t).Hours()/24/m.Cfg.HalfLifeDays)
+}
+
+// HomeWin is P(home wins in regulation) for given intensities (for contributions).
+func (m *Model) HomeWin(lh, la float64) float64 {
+	mx := Matrix(lh, la, m.Cfg.MaxGoals, m.Delta)
+	p := 0.0
+	for h := range mx {
+		for a := 0; a < h; a++ {
+			p += mx[h][a]
+		}
+	}
+	return p
+}
+
+// Golden maximises f on [lo, hi] (exported for layers fitting one coefficient).
+func Golden(f func(float64) float64, lo, hi float64) float64 { return golden(f, lo, hi) }
 
 // Teams returns team ids sorted by strength (for reports).
 func (m *Model) Teams() []int32 {

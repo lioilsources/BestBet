@@ -2,6 +2,7 @@ package backtest
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,5 +87,38 @@ func TestBenjaminiHochberg(t *testing.T) {
 	got = BenjaminiHochberg([]float64{0.01, 0.02, 0.03}, 0.05)
 	if !got[0] || !got[1] || !got[2] {
 		t.Fatalf("all should pass: %v", got)
+	}
+}
+
+func TestPairedDelta(t *testing.T) {
+	sim := periods.DefaultSim()
+	games, _ := periods.Simulate(sim)
+	from := games[0].StartAt.AddDate(1, 0, 0)
+	to := games[len(games)-1].StartAt.Add(24 * time.Hour)
+	base, err := Run(games, nil, fitPeriods, Config{From: from, To: to, MinTrain: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	same := PairedDelta(base, base)
+	if d := same[0]; d.N != len(base) || d.MeanDelta1X2 != 0 || d.CILo != 0 {
+		t.Fatalf("identical runs: %+v", d)
+	}
+	// A deliberately worse variant (no tie inflation, short memory) must show Δ > 0.
+	worse := func(train []canon.Match, asOf time.Time) (Predictor, error) {
+		c := periods.DefaultConfig()
+		c.HalfLifeDays = 15
+		c.Ridge = 0.01
+		return periods.Fit(train, asOf, c)
+	}
+	v, err := Run(games, nil, worse, Config{From: from, To: to, MinTrain: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := PairedDelta(base, v)[0]
+	if !(d.MeanDelta1X2 > 0 && d.CILo > 0) {
+		t.Fatalf("worse variant should be significantly worse: %+v", d)
+	}
+	if md := RenderAblation("x", PairedDelta(base, v), 2023); !strings.Contains(md, "(odložená)") {
+		t.Fatal(md)
 	}
 }

@@ -1,6 +1,7 @@
 package periods
 
 import (
+	"fmt"
 	"math"
 	"math/rand/v2"
 	"time"
@@ -18,6 +19,9 @@ type SimParams struct {
 	HomeAdv  float64
 	SpreadSD float64 // sd of att and def
 	Start    time.Time
+	// GoalieGap > 0 gives every team a starter (concedes exp(-gap) × goals) and a
+	// backup (exp(+gap) ×) who starts 30 % of games; goalie lines are filled.
+	GoalieGap float64
 }
 
 // DefaultSim mimics HockeyAllsvenskan: 14 teams, 52 games each, ~2.8 goals/team.
@@ -54,6 +58,19 @@ func Simulate(p SimParams) ([]canon.Match, SimTruth) {
 					lh := math.Exp(p.Mu + p.HomeAdv + truth.Att[int32(h)] - truth.Def[int32(a)])
 					la := math.Exp(p.Mu + truth.Att[int32(a)] - truth.Def[int32(h)])
 					m := canon.Match{ID: id, League: "sim", Season: 2022 + s, StartAt: day, HomeTeam: int32(h), AwayTeam: int32(a), Phase: "regular"}
+					var gH, gA string
+					if p.GoalieGap > 0 {
+						qH, qA := -p.GoalieGap, -p.GoalieGap
+						gH, gA = fmt.Sprintf("G%d-1", h), fmt.Sprintf("G%d-1", a)
+						if r.Float64() < 0.3 {
+							qH, gH = p.GoalieGap, fmt.Sprintf("G%d-2", h)
+						}
+						if r.Float64() < 0.3 {
+							qA, gA = p.GoalieGap, fmt.Sprintf("G%d-2", a)
+						}
+						la *= math.Exp(qH) // home goalie changes away goals
+						lh *= math.Exp(qA)
+					}
 					reg := canon.Score{}
 					for k := 0; k < 3; k++ {
 						ps := canon.Score{Home: poisson(r, lh*profile[k]), Away: poisson(r, la*profile[k])}
@@ -77,6 +94,13 @@ func Simulate(p SimParams) ([]canon.Match, SimTruth) {
 						}
 					}
 					m.Final = &final
+					if p.GoalieGap > 0 {
+						shH, shA := 28+r.IntN(8), 28+r.IntN(8) // shots on the home / away goalie
+						m.Goalies = []canon.GoalieStart{
+							{Side: canon.Home, Player: gH, Starter: true, ShotsAgainst: shH, Saves: max(shH-reg.Away, 0), Confirm: "CONFIRMED"},
+							{Side: canon.Away, Player: gA, Starter: true, ShotsAgainst: shA, Saves: max(shA-reg.Home, 0), Confirm: "CONFIRMED"},
+						}
+					}
 					out = append(out, m)
 					id++
 					// ~3.5 games per team per week
