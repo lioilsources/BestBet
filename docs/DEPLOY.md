@@ -32,3 +32,7 @@ Data jdou celá znovu postavit z HTTP cache v `data/cache` (swehockey, NHL), bez
 ./bin/ingest-hockey swehockey -goalies=true
 ./bin/ingest-hockey nhl -goalies=true
 ```
+
+## Binárky a cron na JODĚ
+
+Binárky pro Linux (`GOOS=linux GOARCH=amd64 CGO_ENABLED=0`) jdou do `~/deploy/BestBet/bin`, k nim `config/` a `data/cache` (rsync). `DATABASE_URL` v `.env` na JODĚ míří na LAN adresu JODY, protože port nesedí na loopbacku. Cron podle `deploy/crontab.example`; bez klíčů jen řádky swehockey, nhl a predict. Crontab instaluje Olin.
