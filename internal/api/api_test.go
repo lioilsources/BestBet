@@ -13,6 +13,7 @@ import (
 	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/edge"
 	"github.com/lioilsources/BestBet/internal/live"
+	"github.com/lioilsources/BestBet/internal/model/layers"
 	"github.com/lioilsources/BestBet/internal/model/periods"
 )
 
@@ -68,7 +69,7 @@ func setup(t *testing.T) (*Server, *fake, canon.Match) {
 			games[i].Reg, games[i].Final, games[i].Periods = nil, nil, nil
 		}
 	}
-	ps, err := live.Predict(games, now, 48*time.Hour, periods.DefaultConfig())
+	ps, err := live.Predict(games, now, 48*time.Hour, layers.Config{Base: periods.DefaultConfig()})
 	if err != nil || len(ps) == 0 {
 		t.Fatal(err)
 	}

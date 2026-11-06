@@ -17,6 +17,7 @@ import (
 
 	"github.com/lioilsources/BestBet/internal/config"
 	"github.com/lioilsources/BestBet/internal/live"
+	"github.com/lioilsources/BestBet/internal/model/layers"
 	"github.com/lioilsources/BestBet/internal/model/periods"
 	"github.com/lioilsources/BestBet/internal/store"
 )
@@ -56,7 +57,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		ps, err := live.Predict(ms, now, *horizon, periods.DefaultConfig())
+		ps, err := live.Predict(ms, now, *horizon, layers.Config{Base: periods.DefaultConfig(), Layers: l.Layers})
 		if err != nil {
 			slog.Error("predict", "league", l.Slug, "err", err)
 			continue
@@ -66,7 +67,7 @@ func run() error {
 				return err
 			}
 		}
-		slog.Info("predict", "league", l.Slug, "games", len(ms), "predicted", len(ps))
+		slog.Info("predict", "league", l.Slug, "model", layers.Version(l.Layers), "games", len(ms), "predicted", len(ps))
 	}
 	return nil
 }

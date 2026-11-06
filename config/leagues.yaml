@@ -78,6 +78,8 @@ leagues:
     tz: America/New_York
     # NHL play-off OT is 5v5 20-minute periods; the shootout exists only in the regular season.
     ot: {regular: 3v3_5, playoff: 5v5_20}
+    # Phase 2 ablation on the NHL (docs/RESULTS_NHL.md): goalie and b2b pass.
+    layers: [goalie, b2b]
     apihockey: {search: NHL, country: USA}
     oddspapi: {search: NHL, category: USA}
 

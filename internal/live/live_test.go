@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lioilsources/BestBet/internal/model/layers"
 	"github.com/lioilsources/BestBet/internal/model/periods"
 )
 
@@ -16,7 +17,7 @@ func TestPredictOnlyUpcomingAndCausal(t *testing.T) {
 			games[i].Reg, games[i].Final, games[i].Periods = nil, nil, nil
 		}
 	}
-	ps, err := Predict(games, now, 48*time.Hour, periods.DefaultConfig())
+	ps, err := Predict(games, now, 48*time.Hour, layers.Config{Base: periods.DefaultConfig()})
 	if err != nil || len(ps) == 0 {
 		t.Fatalf("%d %v", len(ps), err)
 	}
@@ -31,7 +32,25 @@ func TestPredictOnlyUpcomingAndCausal(t *testing.T) {
 		}
 	}
 	// Too little history: nothing.
-	if ps, _ := Predict(games[:50], games[49].StartAt, 48*time.Hour, periods.DefaultConfig()); ps != nil {
+	if ps, _ := Predict(games[:50], games[49].StartAt, 48*time.Hour, layers.Config{Base: periods.DefaultConfig()}); ps != nil {
 		t.Fatal("expected no predictions with 50 games")
+	}
+}
+
+func TestPredictWithLayersUsesOutOfSampleWalk(t *testing.T) {
+	games, _ := periods.Simulate(periods.DefaultSim())
+	now := games[len(games)*3/4].StartAt
+	for i := range games {
+		if !games[i].StartAt.Before(now) {
+			games[i].Reg, games[i].Final, games[i].Periods = nil, nil, nil
+		}
+	}
+	cfg := layers.Config{Base: periods.DefaultConfig(), Layers: []string{layers.Goalie, layers.B2B}}
+	ps, err := Predict(games, now, 48*time.Hour, cfg)
+	if err != nil || len(ps) == 0 {
+		t.Fatalf("%d %v", len(ps), err)
+	}
+	if want := layers.Version(cfg.Layers); ps[0].ModelVersion != want {
+		t.Fatalf("model %q, want %q", ps[0].ModelVersion, want)
 	}
 }
