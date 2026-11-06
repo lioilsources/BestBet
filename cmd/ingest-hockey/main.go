@@ -1,9 +1,11 @@
 // Command ingest-hockey fills the M0 tables (plan §1.4.5) and writes DATA_M0.md.
 //
-//	ingest-hockey migrate
+//	ingest-hockey migrate                      # creates the database if missing
+//	ingest-hockey drop-mock                    # drops DATABASE_URL, only *_mock
 //	ingest-hockey leagues                      # sync config, resolve API ids
 //	ingest-hockey games    [-league s] [-season y]
 //	ingest-hockey swehockey [-league s] [-season y] [-goalies=true]
+//	ingest-hockey nhl      [-season y] [-goalies=true]  # public NHL API, no key
 //	ingest-hockey odds     [-league s]         # one API-HOCKEY odds snapshot now
 //	ingest-hockey snapshot                     # cron: odds for games entering T-24h/T-1h/closing
 //	ingest-hockey oddspapi -league s -from 2026-01-01 -to 2026-06-30 [-books pinnacle,bet365,unibet]
@@ -11,6 +13,8 @@
 //
 // Environment: DATABASE_URL, APIHOCKEY_KEY, ODDSPAPI_KEY, CACHE_DIR (data/cache),
 // APIHOCKEY_BUDGET (90 requests per run; the free tier has 100 per day).
+// MOCK_PROVIDERS=1 replaces both paid APIs with internal/provmock (no keys); it
+// only runs against a database whose name ends in _mock (make mock-run).
 package main
 
 import (
@@ -39,7 +43,7 @@ const userAgent = "BestBet-M0/0.1 (research; low rate)"
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|leagues|games|swehockey|odds|snapshot|oddspapi|report> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|drop-mock|leagues|games|swehockey|nhl|odds|snapshot|oddspapi|report> [flags]")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -55,7 +59,7 @@ func run(ctx context.Context, cmd string, args []string) error {
 	cfgPath := fs.String("config", "config/leagues.yaml", "league config")
 	leagueFlag := fs.String("league", "", "league slug (default: all)")
 	seasonFlag := fs.Int("season", 0, "season start year (default: config seasons)")
-	goalies := fs.Bool("goalies", true, "swehockey: also fetch per-game goalies")
+	goalies := fs.Bool("goalies", true, "swehockey, nhl: also fetch per-game goalies")
 	from := fs.String("from", "", "oddspapi: from date YYYY-MM-DD")
 	to := fs.String("to", "", "oddspapi: to date YYYY-MM-DD")
 	books := fs.String("books", "pinnacle,bet365,unibet", "oddspapi: up to 3 bookmaker slugs")
@@ -68,7 +72,17 @@ func run(ctx context.Context, cmd string, args []string) error {
 	if dsn == "" {
 		return errors.New("DATABASE_URL is not set (see .env.example)")
 	}
+	if cmd == "drop-mock" {
+		return store.DropMockDatabase(ctx, dsn)
+	}
 	if cmd == "migrate" {
+		created, err := store.EnsureDatabase(ctx, dsn)
+		if err != nil {
+			return err
+		}
+		if created {
+			slog.Info("database created")
+		}
 		if err := store.Migrate(dsn); err != nil {
 			return err
 		}
@@ -79,6 +93,11 @@ func run(ctx context.Context, cmd string, args []string) error {
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
 		return err
+	}
+	if os.Getenv("MOCK_PROVIDERS") == "1" {
+		if err := startMock(dsn, cfg); err != nil {
+			return err
+		}
 	}
 	st, err := store.Open(ctx, dsn)
 	if err != nil {
@@ -144,12 +163,24 @@ func run(ctx context.Context, cmd string, args []string) error {
 			}
 		}
 		return nil
+	case "nhl":
+		hc := &httpcache.Client{Dir: cacheDir + "/nhl", MinGap: time.Second, UserAgent: userAgent}
+		l, ok := cfg.League("nhl")
+		if !ok {
+			return errors.New("league nhl is not configured")
+		}
+		for _, s := range seasons {
+			if _, err := ingest.NHL(ctx, env, hc, l, refresh(ctx, st, rows, l.Slug), s, *goalies); err != nil {
+				return fmt.Errorf("nhl %d: %w", s, err)
+			}
+		}
+		return nil
 	case "snapshot":
 		return cmdSnapshot(ctx, env, rows, leagues, cacheDir)
 	case "oddspapi":
-		key := os.Getenv("ODDSPAPI_KEY")
-		if key == "" {
-			return errors.New("ODDSPAPI_KEY is not set")
+		c, err := oddsPapi(cacheDir)
+		if err != nil {
+			return err
 		}
 		f, err := time.Parse("2006-01-02", *from)
 		if err != nil {
@@ -159,7 +190,6 @@ func run(ctx context.Context, cmd string, args []string) error {
 		if err != nil {
 			return fmt.Errorf("-to: %w", err)
 		}
-		c := &oddspapi.Client{Base: oddspapi.DefaultBase, Key: key, HTTP: &httpcache.Client{Dir: cacheDir + "/oddspapi", MinGap: 5 * time.Second, UserAgent: userAgent}}
 		for _, l := range leagues {
 			if _, err := ingest.OddsPapi(ctx, env, c, l, refresh(ctx, st, rows, l.Slug), f, t, strings.Split(*books, ",")); err != nil {
 				slog.Error("oddspapi", "league", l.Slug, "err", err)
@@ -207,24 +237,34 @@ func cmdLeagues(ctx context.Context, st *store.Store, leagues []config.League, c
 	} else {
 		slog.Warn("skip api-hockey", "err", err)
 	}
-	if key := os.Getenv("ODDSPAPI_KEY"); key != "" {
-		c := &oddspapi.Client{Base: oddspapi.DefaultBase, Key: key, HTTP: &httpcache.Client{Dir: cacheDir + "/oddspapi", MinGap: 5 * time.Second, UserAgent: userAgent}}
+	if c, err := oddsPapi(cacheDir); err == nil {
 		ts, err := c.Tournaments(ctx)
 		if err != nil {
 			return err
 		}
 		for _, l := range leagues {
 			fmt.Printf("%-16s oddspapi candidates:", l.Slug)
+			var hits []oddspapi.Tournament
 			for _, t := range ts {
 				if strings.Contains(strings.ToLower(t.TournamentName), strings.ToLower(l.OddsPapi.Search)) &&
 					strings.Contains(strings.ToLower(t.CategoryName), strings.ToLower(l.OddsPapi.Category)) {
 					fmt.Printf(" [%d %q / %s]", t.TournamentID, t.TournamentName, t.CategoryName)
+					hits = append(hits, t)
 				}
 			}
-			fmt.Println("  -> put `tournament_id` into config")
+			if len(hits) != 1 {
+				fmt.Println("  -> put `tournament_id` into config")
+				continue
+			}
+			// A unique candidate is stored like the API-HOCKEY id (COALESCE keeps the rest).
+			id := int32(hits[0].TournamentID)
+			if _, err := st.Q.UpsertLeague(ctx, dbq.UpsertLeagueParams{Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role, OddspapiTournamentID: &id}); err != nil {
+				return err
+			}
+			fmt.Printf("  -> stored; put `tournament_id: %d` into config\n", id)
 		}
 	} else {
-		slog.Warn("skip oddspapi: ODDSPAPI_KEY not set")
+		slog.Warn("skip oddspapi", "err", err)
 	}
 	return nil
 }

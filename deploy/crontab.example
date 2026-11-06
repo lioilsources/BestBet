@@ -1,0 +1,6 @@
+# BestBet cron (docs/API.md). Paths and env come from the host; secrets live in .env.
+# m   h   dom mon dow  command
+0     6   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey games    >> data/log/games.log 2>&1
+10    6   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey swehockey -league swe-allsvenskan -season 2026 >> data/log/swehockey.log 2>&1
+*/15  *   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey snapshot >> data/log/snapshot.log 2>&1
+20    *   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/predict               >> data/log/predict.log 2>&1

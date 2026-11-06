@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/config"
 	"github.com/lioilsources/BestBet/internal/hockey"
 )
@@ -133,5 +134,47 @@ func TestSecondaryThenPrimaryMerge(t *testing.T) {
 	var h60 int
 	if err := s.Pool.QueryRow(ctx, "SELECT home_60 FROM games").Scan(&h60); err != nil || h60 != 3 {
 		t.Fatalf("home_60: %d %v", h60, err)
+	}
+}
+
+func TestNHLGameAndPredictionRoundTrip(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	cfg := config.File{Leagues: []config.League{{Slug: "nhl", Name: "NHL", Country: "USA", Role: "control", TZ: "America/New_York"}}}
+	leagues, err := s.SyncLeagues(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lg := leagues["nhl"]
+	teams, _ := s.LoadTeams(ctx, lg.ID, "nhl", nil)
+	h, _ := teams.Resolve(ctx, "Florida Panthers", 0)
+	a, _ := teams.Resolve(ctx, "Dallas Stars", 0)
+	start := time.Date(2025, 11, 1, 23, 0, 0, 0, time.UTC)
+	res, _ := hockey.BuildResult([]hockey.Score{{Home: 0, Away: 0}, {Home: 2, Away: 2}, {Home: 1, Away: 1}}, &hockey.Score{}, &hockey.Score{Home: 1})
+	in := GameInput{LeagueID: lg.ID, Season: 2025, StartAt: start, Status: "finished", HomeTeamID: h, AwayTeamID: a, Phase: "regular", Result: &res, OTType: "shootout"}
+	id, method, err := s.UpsertNHLGame(ctx, 2025020185, in)
+	if err != nil || method != "new" {
+		t.Fatal(err, method)
+	}
+	if id2, method, err := s.UpsertNHLGame(ctx, 2025020185, in); err != nil || id2 != id || method != "external_id" {
+		t.Fatal(err, method)
+	}
+	g, err := s.Game(ctx, id)
+	if err != nil || g.Final.Home != 4 || g.Reg.Home != 3 || g.DecidedIn != "so" || g.HomeName != "Florida Panthers" {
+		t.Fatalf("%+v %v", g, err)
+	}
+	p := canon.Prediction{MatchID: id, ModelVersion: "test", InputsHash: "abc", ComputedAt: start.Add(-time.Hour), LambdaHome: 3.1234, LambdaAway: 2.9,
+		Matrix: canon.ScoreMatrix{{0.5, 0.5}}, Markets: canon.MarketProbs{"1x2": {"home": 0.4}}, Contributions: []canon.Contribution{{Input: "home_ice", PP: 2}}}
+	for i := 0; i < 2; i++ { // idempotent
+		if err := s.SavePrediction(ctx, "live", p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.LatestPrediction(ctx, id)
+	if err != nil || got == nil || got.Markets["1x2"]["home"] != 0.4 || got.LambdaHome != 3.123 || len(got.Contributions) != 1 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if _, err := s.Game(ctx, 999999); err != ErrNotFound {
+		t.Fatalf("missing game: %v", err)
 	}
 }
