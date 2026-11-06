@@ -338,6 +338,7 @@ func (m *Model) Predict(match canon.Match) (canon.Prediction, error) {
 		return p, fmt.Errorf("layers predict: %w", err)
 	}
 	p.ModelVersion = Version(m.Cfg.Layers)
+	p.Contributions = m.Base.StrengthContributions(match)
 	full := m.Base.HomeWin(lh, la)
 	for _, l := range m.Cfg.Layers {
 		t, ok := terms[l]

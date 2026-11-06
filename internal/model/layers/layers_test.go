@@ -34,8 +34,14 @@ func TestGoalieLayerFindsEffect(t *testing.T) {
 		t.Fatalf("backup should raise away λ: adj %.3f la %.3f base %.3f", adjH, la, laBase)
 	}
 	p, err := m.Predict(backupGame)
-	if err != nil || len(p.Contributions) != 1 || p.Contributions[0].PP >= 0 || p.ModelVersion != "periods-v1+goalie" {
-		t.Fatalf("home backup must cost the home side: %+v %v", p, err)
+	var goalie *canon.Contribution
+	for i := range p.Contributions {
+		if p.Contributions[i].Input == Goalie {
+			goalie = &p.Contributions[i]
+		}
+	}
+	if err != nil || len(p.Contributions) != 6 || goalie == nil || goalie.PP >= 0 || p.ModelVersion != "periods-v1+goalie" {
+		t.Fatalf("home backup must cost the home side: %+v %v", p.Contributions, err)
 	}
 }
 

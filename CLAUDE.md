@@ -22,7 +22,7 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 - `internal/model/periods` (baseline), `layers` (vrstvy nad baseline), `markets`, `calib`, `explain`; `internal/devig`; `internal/backtest`
 - `internal/features`, `internal/rating`: vstupy modelu (vlna, brankář, absence)
 - `internal/db/migrations`: golang-migrate, embed; `internal/db/dbq` je generované sqlc
-- `internal/apihockey`, `internal/oddspapi`, `internal/swehockey`: klienti a parsery zdrojů
+- `internal/apihockey`, `internal/oddspapi`, `internal/swehockey`, `internal/nhl`: klienti a parsery zdrojů
 - `internal/hockey`: výsledek, OT/SO, fáze, série (čistá logika)
 - `internal/teammatch`: párování názvů týmů mezi zdroji
 - `internal/store`: pravidla slučování; `internal/ingest`: kroky ingestu

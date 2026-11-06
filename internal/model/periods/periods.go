@@ -23,6 +23,7 @@ import (
 	"gonum.org/v1/gonum/optimize"
 
 	"github.com/lioilsources/BestBet/internal/canon"
+	"github.com/lioilsources/BestBet/internal/model/explain"
 	"github.com/lioilsources/BestBet/internal/model/markets"
 )
 
@@ -271,7 +272,47 @@ func (m *Model) OTHomeWin(home, away int32) float64 {
 // Predict returns the full prediction for a match.
 func (m *Model) Predict(match canon.Match) (canon.Prediction, error) {
 	lh, la := m.Lambdas(match.HomeTeam, match.AwayTeam)
-	return m.PredictLambdas(match, lh, la, nil)
+	p, err := m.PredictLambdas(match, lh, la, nil)
+	if err != nil {
+		return p, err
+	}
+	p.Contributions = m.StrengthContributions(match)
+	return p, nil
+}
+
+// StrengthContributions splits the home regulation win (percentage points
+// against two average teams on neutral ice) into home ice, attack and defence
+// of each side by exact Shapley values (07 §4, internal/model/explain).
+func (m *Model) StrengthContributions(match canon.Match) []canon.Contribution {
+	h, a := match.HomeTeam, match.AwayTeam
+	terms := []struct {
+		input string
+		side  canon.Side
+		home  float64 // log λ_home term
+		away  float64 // log λ_away term
+	}{
+		{"home_ice", canon.Home, m.HomeAdv, 0},
+		{"attack", canon.Home, m.Att[h], 0},
+		{"defence", canon.Home, 0, -m.Def[h]},
+		{"attack", canon.Away, 0, m.Att[a]},
+		{"defence", canon.Away, -m.Def[a], 0},
+	}
+	value := func(mask uint) float64 {
+		eh, ea := m.Mu, m.Mu
+		for i, t := range terms {
+			if mask&(1<<i) != 0 {
+				eh += t.home
+				ea += t.away
+			}
+		}
+		return m.HomeWin(math.Exp(eh), math.Exp(ea))
+	}
+	phi := explain.Shapley(len(terms), value)
+	out := make([]canon.Contribution, len(terms))
+	for i, t := range terms {
+		out[i] = canon.Contribution{Input: t.input, Side: t.side, PP: 100 * phi[i]}
+	}
+	return out
 }
 
 // PredictLambdas builds the prediction from given regulation intensities (layers

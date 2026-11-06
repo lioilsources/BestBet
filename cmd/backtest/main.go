@@ -41,6 +41,8 @@ func run() error {
 	out := flag.String("out", "", "write the report here (default stdout)")
 	ablate := flag.String("ablation", "", "layers to compare against the baseline: all or a comma list of "+strings.Join(layers.All, ","))
 	title := flag.String("title", "Fáze 1 — baseline (bez vlny, bez brankáře)", "report title")
+	calibrate := flag.Bool("calib", false, "per-market calibration fitted on -tune, scored on held-out seasons")
+	tune := flag.Int("tune", 2024, "calib: tuning season (never a held-out one)")
 	gate := flag.Bool("gate", false, "simulate 1X2 bets (01 §2.3) and render brána G1 (01 fáze 3)")
 	sharp := flag.String("sharp", "pinnacle", "gate: reference book for the close")
 	books := flag.String("books", "tipsport,fortuna,chance,betano", "gate: books we may bet at (CZ licensed)")
@@ -119,6 +121,12 @@ func run() error {
 		if err != nil {
 			return err
 		}
+	}
+	if *calibrate {
+		if *holdout != 0 && *tune >= *holdout {
+			return fmt.Errorf("-tune %d is a held-out season", *tune)
+		}
+		md += "\n## Kalibrace po trzích (01 fáze 3)\n\n" + backtest.RenderCalibration(rows, *tune, *holdout)
 	}
 	if *gate {
 		md += gateSection(rows, odds, *holdout, *sharp, strings.Split(*books, ","))

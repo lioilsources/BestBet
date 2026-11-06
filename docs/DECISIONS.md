@@ -8,6 +8,9 @@ Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a 
 - **CLV** = log(vzatý kurz × p_close), p_close je Shin-odmaržovaný poslední kurz reference (Pinnacle) před začátkem.
 - **Knihy pro sázky:** tipsport, fortuna, chance, betano (CZ licence). Reference: pinnacle. Obojí je flag `cmd/backtest`.
 - **Mock poskytovatelů (`docs/MOCK.md`)** místo klíčů, dokud je vlastník nedodá. Jen DB `*_mock`.
+- **Kalibrace po trzích** (`-calib`, fit na 2024/25, hodnocení na odložených): surový model je dobře kalibrovaný; Platt ani izotonická regrese 1X2, ML ani puck line nezlepšují, u total 5,5 a remízy ve 1. třetině je zlepšení v řádu tisícin. Kalibrační vrstva se **nezapíná**; přehodnotit s NHL a s kurzy.
+- **Příspěvky vstupů (07 §4):** baseline rozkládá výhru domácích na domácí led, útok a obranu obou stran přesnými Shapleyho hodnotami proti dvěma průměrným týmům na neutrálním ledě; vrstvy přidávají svůj marginální efekt.
+- **NHL z veřejného API** (`api-web.nhle.com`, bez klíče): denní `score` dává góly s třetinami, OT a nájezdy (1 požadavek na den), `boxscore` brankáře. NHL je kontrolní efektivní liga (00 §1.4.5) a zdroj historie pro ≥ 3 000 zápasů brány G1.
 - **Stav brány G1 na Allsvenskan (`docs/RESULTS_PHASE3.md`):** tři řádky „chybí“ (kurzy), ablace „ne“.
 
 ## 2026-11-06 (fáze 2, vlna a únava)

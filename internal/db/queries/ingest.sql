@@ -159,3 +159,36 @@ SELECT * FROM games WHERE apihockey_id = $1;
 SELECT EXISTS (
     SELECT 1 FROM odds_snapshots WHERE game_id = $1 AND snapshot_kind = $2
 )::bool AS present;
+
+-- name: GetGameByNhlID :one
+SELECT * FROM games WHERE nhl_id = $1;
+
+-- name: AttachNHL :exec
+-- Same rules as AttachSwehockey: API-HOCKEY owns a game when it has its id.
+UPDATE games SET
+    nhl_id = $2,
+    status = CASE WHEN apihockey_id IS NULL THEN sqlc.arg(status)::text ELSE status END,
+    start_at = CASE WHEN apihockey_id IS NULL THEN sqlc.arg(start_at)::timestamptz ELSE start_at END,
+    home_score = CASE WHEN apihockey_id IS NULL THEN $3 ELSE COALESCE(home_score, $3) END,
+    away_score = CASE WHEN apihockey_id IS NULL THEN $4 ELSE COALESCE(away_score, $4) END,
+    home_60 = CASE WHEN apihockey_id IS NULL THEN $5 ELSE COALESCE(home_60, $5) END,
+    away_60 = CASE WHEN apihockey_id IS NULL THEN $6 ELSE COALESCE(away_60, $6) END,
+    period_scores = CASE WHEN apihockey_id IS NULL THEN $7 ELSE COALESCE(period_scores, $7) END,
+    ot_home = CASE WHEN apihockey_id IS NULL THEN $8 ELSE COALESCE(ot_home, $8) END,
+    ot_away = CASE WHEN apihockey_id IS NULL THEN $9 ELSE COALESCE(ot_away, $9) END,
+    so_winner = CASE WHEN apihockey_id IS NULL THEN $10 ELSE COALESCE(so_winner, $10) END,
+    decided_in = CASE WHEN apihockey_id IS NULL THEN $11 ELSE COALESCE(decided_in, $11) END,
+    ot_type = CASE WHEN apihockey_id IS NULL THEN sqlc.narg(ot_type) ELSE COALESCE(ot_type, sqlc.narg(ot_type)) END,
+    phase = CASE WHEN apihockey_id IS NULL THEN sqlc.arg(phase)::text ELSE phase END,
+    updated_at = now()
+WHERE id = $1;
+
+-- name: InsertGameNHL :one
+INSERT INTO games (
+    league_id, season, start_at, status, home_team_id, away_team_id,
+    home_score, away_score, home_60, away_60, period_scores,
+    ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, nhl_id
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+)
+RETURNING id;

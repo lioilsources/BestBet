@@ -100,3 +100,27 @@ func TestTieInflationFitsExtraDraws(t *testing.T) {
 		t.Fatalf("delta should pick up extra ties: %.3f", m.Delta)
 	}
 }
+
+func TestStrengthContributionsSumToGap(t *testing.T) {
+	games, _ := Simulate(DefaultSim())
+	m, err := Fit(games, games[len(games)-1].StartAt, DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := games[len(games)-1]
+	p, err := m.Predict(g)
+	if err != nil || len(p.Contributions) != 5 {
+		t.Fatalf("%v %+v", err, p.Contributions)
+	}
+	sum := 0.0
+	for _, c := range p.Contributions {
+		sum += c.PP
+	}
+	avg := m.HomeWin(math.Exp(m.Mu), math.Exp(m.Mu))
+	if got, want := sum, 100*(p.Markets["1x2"]["home"]-avg); math.Abs(got-want) > 1e-6 {
+		t.Fatalf("contributions sum %.4f, want %.4f", got, want)
+	}
+	if p.Contributions[0].Input != "home_ice" || p.Contributions[0].PP <= 0 {
+		t.Fatalf("home ice should help the home side: %+v", p.Contributions[0])
+	}
+}

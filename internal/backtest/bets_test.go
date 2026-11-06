@@ -98,3 +98,19 @@ func TestGateWithoutOddsSaysMissing(t *testing.T) {
 		t.Fatal(md)
 	}
 }
+
+func TestCalibrationReport(t *testing.T) {
+	sim := periods.DefaultSim()
+	games, _ := periods.Simulate(sim)
+	from := games[0].StartAt.AddDate(1, 0, 0)
+	rows, err := Run(games, nil, fitPeriods, Config{From: from, To: games[len(games)-1].StartAt.Add(24 * time.Hour), MinTrain: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := RenderCalibration(rows, 2023, 2024)
+	for _, want := range []string{"| 1x2 | remíza |", "| total | over 5,5 |", "| p1_1x2 |", "Koš"} {
+		if !strings.Contains(md, want) {
+			t.Fatalf("missing %q:\n%s", want, md)
+		}
+	}
+}
