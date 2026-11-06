@@ -25,6 +25,7 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 - `internal/teammatch`: párování názvů týmů mezi zdroji
 - `internal/store`: pravidla slučování; `internal/ingest`: kroky ingestu
 - `internal/report`: generuje `DATA_M0.md`
+- `internal/provmock`: falešný API-HOCKEY a OddsPapi bez klíčů (`docs/MOCK.md`, `make mock-run`)
 - `config/leagues.yaml`: ligy, sezony, OT formáty, swehockey ID, aliasy
 
 ## Invarianty
@@ -38,10 +39,11 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 - `internal/model`, `features`, `rating` neznají DB ani HTTP; vstup i výstup je `canon`.
 - Metrika modelu se nikdy neukazuje bez metriky trhu vedle (nebo výslovného „chybí“).
 - Odložené sezony (`docs/DECISIONS.md`) se k ladění nepoužívají.
+- `MOCK_PROVIDERS=1` jen proti DB `*_mock`; čísla z mocku nejsou výsledky.
 - Koeficienty vrstev se fitují jen na out-of-sample predikcích baseline (`layers.Inputs.OOS`).
 
 ## Odchylky
 Žádné.
 
 ## Kam dál
-`docs/M0.md` (zdroje, slučování, cron), `docs/DECISIONS.md`, `docs/DATA_CONTRACT.md`, `docs/RESULTS_PHASE*.md`, `Prompts/`.
+`docs/M0.md` (zdroje, slučování, cron), `docs/MOCK.md`, `docs/DECISIONS.md`, `docs/DATA_CONTRACT.md`, `docs/RESULTS_PHASE*.md`, `Prompts/`.

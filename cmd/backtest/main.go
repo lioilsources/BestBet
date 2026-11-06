@@ -40,6 +40,10 @@ func run() error {
 	regularOnly := flag.Bool("regular-only", true, "evaluate regular season only (play-off has its own layer, 00 §1.4.7)")
 	out := flag.String("out", "", "write the report here (default stdout)")
 	ablate := flag.String("ablation", "", "layers to compare against the baseline: all or a comma list of "+strings.Join(layers.All, ","))
+	title := flag.String("title", "Fáze 1 — baseline (bez vlny, bez brankáře)", "report title")
+	gate := flag.Bool("gate", false, "simulate 1X2 bets (01 §2.3) and render brána G1 (01 fáze 3)")
+	sharp := flag.String("sharp", "pinnacle", "gate: reference book for the close")
+	books := flag.String("books", "tipsport,fortuna,chance,betano", "gate: books we may bet at (CZ licensed)")
 	flag.Parse()
 
 	dsn := os.Getenv("DATABASE_URL")
@@ -98,7 +102,7 @@ func run() error {
 	rows = keep(rows)
 	cfgLine := fmt.Sprintf("poločas vážení %.0f dní, ridge %.0f, navýšení remíz %v, max %d gólů", cfg.HalfLifeDays, cfg.Ridge, cfg.TieInflation, cfg.MaxGoals)
 	in := backtest.ReportInput{
-		Title: "Fáze 1 — baseline (bez vlny, bez brankáře)", League: *league, ModelVersion: periods.Version,
+		Title: *title, League: *league, ModelVersion: periods.Version,
 		Config: cfgLine, Generated: time.Now(), Holdout: *holdout, Rows: rows,
 	}
 	md, err := backtest.RenderResults(in)
@@ -115,6 +119,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
+	}
+	if *gate {
+		md += gateSection(rows, odds, *holdout, *sharp, strings.Split(*books, ","))
 	}
 	if *out == "" {
 		fmt.Print(md)
@@ -217,6 +224,57 @@ func ablation(matches []canon.Match, odds map[int64][]canon.OddsQuote, cfg perio
 	}
 	b.WriteString("\n## Kopíruje vlna trh?\n\nKorelace rezidua modelu s pohybem kurzu od otevření k uzavření (01 §5 fáze 2) vyžaduje otevírací i uzavírací kurzy. Pro Allsvenskan 2023–2026 je nemáme, takže test čeká na data.\n")
 	return b.String(), nil
+}
+
+// gateSection simulates the staking policy on the baseline and renders G1.
+func gateSection(rows []backtest.Row, odds map[int64][]canon.OddsQuote, holdout int, sharp string, books []string) string {
+	cfg := backtest.DefaultBetConfig()
+	cfg.Sharp, cfg.Books = sharp, books
+	bets := backtest.SimulateBets(rows, odds, cfg)
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n## Sázky (01 §2.3)\n\nBaseline, trh 1X2, sázka u %s s posledním kurzem nejméně 1 h před začátkem, když p_model − p_implied ≥ 3 p. b. (Shin) a EV > 0. Kelly 1/4, strop 2 %% bankrollu, nejvýš 5 sázek denně. CLV = log(vzatý kurz × p uzavíracího %s po odmaržování).\n\n",
+		strings.Join(books, ", "), sharp)
+	b.WriteString("| Sezona | Sázek | Yield | CLV | 95% interval CLV | Poráží close | Max drawdown | Bankroll na konci |\n|---|---|---|---|---|---|---|---|\n")
+	by := map[int][]backtest.Bet{}
+	for _, x := range bets {
+		by[x.Match.Season] = append(by[x.Match.Season], x)
+	}
+	var ss []int
+	for k := range by {
+		ss = append(ss, k)
+	}
+	sort.Ints(ss)
+	line := func(label string, xs []backtest.Bet) {
+		s := backtest.SummariseBets(xs, 1)
+		clv, ci, beat := "chybí", "—", "—"
+		if s.NCLV > 0 {
+			clv = cz("%+.2f %%", 100*s.MeanCLV)
+			ci = cz("%+.2f", 100*s.CLVLo) + " až " + cz("%+.2f %%", 100*s.CLVHi)
+			beat = cz("%.0f %%", 100*s.BeatClose)
+		}
+		fmt.Fprintf(&b, "| %s | %d | %s | %s | %s | %s | %s | %s |\n", label, s.N, cz("%+.1f %%", 100*s.Yield), clv, ci, beat, cz("%.1f %%", 100*s.MaxDD), cz("%.3f", s.EndBank))
+	}
+	for _, k := range ss {
+		label := fmt.Sprintf("%d/%02d", k, (k+1)%100)
+		if holdout != 0 && k >= holdout {
+			label += " (odložená)"
+		}
+		line(label, by[k])
+	}
+	if len(bets) == 0 {
+		b.WriteString("| **celkem** | 0 | — | chybí | — | — | — | — |\n\nŽádná sázka: pro tyto zápasy nejsou kurzy knih, u kterých smíme sázet.\n")
+	} else {
+		line("**celkem**", bets)
+	}
+	if c, n := backtest.MarketMove(rows, odds, sharp); n > 0 {
+		fmt.Fprintf(&b, "\nModel vs. pohyb trhu: korelace (p_model − p_open) s (p_close − p_open) pro výhru domácích = %s na %d zápasech. Kladná korelace znamená, že model předjímá, kam se trh do začátku posune.\n", cz("%.2f", c), n)
+	} else {
+		fmt.Fprintf(&b, "\nModel vs. pohyb trhu: chybí (nejsou otevírací a uzavírací kurzy %s).\n", sharp)
+	}
+	b.WriteString("\n## Brána G1 (01 fáze 3)\n\n")
+	b.WriteString(backtest.RenderGate(backtest.GateInput{Rows: rows, Bets: bets, Holdout: holdout, Sharp: sharp, Odds: odds,
+		Ablation: "žádná vrstva nezlepšila (`docs/RESULTS_PHASE2.md`)", AblationOK: false}))
+	return b.String()
 }
 
 func holdoutDelta(base, variant []backtest.Row, holdout int) string {

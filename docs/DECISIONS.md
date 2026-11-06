@@ -2,6 +2,14 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-06 (fáze 3, sázky a G1)
+
+- **Sázková politika podle 01 §2.3, pevná:** jen 1X2, nejvýš jedna sázka na zápas (výběr s největší hranou), hrana = p_model − p_implied knihy po Shinovi ≥ 3 p. b. a zároveň EV > 0, kurz ≤ 10. Kelly 1/4 z bankrollu na začátku dne, strop 2 %, nejvýš 5 sázek denně. Kurz se bere poslední nejméně 1 h před začátkem.
+- **CLV** = log(vzatý kurz × p_close), p_close je Shin-odmaržovaný poslední kurz reference (Pinnacle) před začátkem.
+- **Knihy pro sázky:** tipsport, fortuna, chance, betano (CZ licence). Reference: pinnacle. Obojí je flag `cmd/backtest`.
+- **Mock poskytovatelů (`docs/MOCK.md`)** místo klíčů, dokud je vlastník nedodá. Jen DB `*_mock`.
+- **Stav brány G1 na Allsvenskan (`docs/RESULTS_PHASE3.md`):** tři řádky „chybí“ (kurzy), ablace „ne“.
+
 ## 2026-11-06 (fáze 2, vlna a únava)
 
 - **Vrstvy jako jeden zásobník** (`internal/model/layers`): každá vrstva je dvojice příznaků (x_dom, x_hosté) přičtená k log λ s koeficientem β; všechny β se fitují společně Newtonem s ridge 1, vrstva s < 100 aktivními tréninkovými zápasy se nefituje.

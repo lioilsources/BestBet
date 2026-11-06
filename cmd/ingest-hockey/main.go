@@ -11,6 +11,8 @@
 //
 // Environment: DATABASE_URL, APIHOCKEY_KEY, ODDSPAPI_KEY, CACHE_DIR (data/cache),
 // APIHOCKEY_BUDGET (90 requests per run; the free tier has 100 per day).
+// MOCK_PROVIDERS=1 replaces both paid APIs with internal/provmock (no keys); it
+// only runs against a database whose name ends in _mock (make mock-run).
 package main
 
 import (
@@ -80,6 +82,11 @@ func run(ctx context.Context, cmd string, args []string) error {
 	if err != nil {
 		return err
 	}
+	if os.Getenv("MOCK_PROVIDERS") == "1" {
+		if err := startMock(dsn, cfg); err != nil {
+			return err
+		}
+	}
 	st, err := store.Open(ctx, dsn)
 	if err != nil {
 		return err
@@ -147,9 +154,9 @@ func run(ctx context.Context, cmd string, args []string) error {
 	case "snapshot":
 		return cmdSnapshot(ctx, env, rows, leagues, cacheDir)
 	case "oddspapi":
-		key := os.Getenv("ODDSPAPI_KEY")
-		if key == "" {
-			return errors.New("ODDSPAPI_KEY is not set")
+		c, err := oddsPapi(cacheDir)
+		if err != nil {
+			return err
 		}
 		f, err := time.Parse("2006-01-02", *from)
 		if err != nil {
@@ -159,7 +166,6 @@ func run(ctx context.Context, cmd string, args []string) error {
 		if err != nil {
 			return fmt.Errorf("-to: %w", err)
 		}
-		c := &oddspapi.Client{Base: oddspapi.DefaultBase, Key: key, HTTP: &httpcache.Client{Dir: cacheDir + "/oddspapi", MinGap: 5 * time.Second, UserAgent: userAgent}}
 		for _, l := range leagues {
 			if _, err := ingest.OddsPapi(ctx, env, c, l, refresh(ctx, st, rows, l.Slug), f, t, strings.Split(*books, ",")); err != nil {
 				slog.Error("oddspapi", "league", l.Slug, "err", err)
@@ -207,24 +213,34 @@ func cmdLeagues(ctx context.Context, st *store.Store, leagues []config.League, c
 	} else {
 		slog.Warn("skip api-hockey", "err", err)
 	}
-	if key := os.Getenv("ODDSPAPI_KEY"); key != "" {
-		c := &oddspapi.Client{Base: oddspapi.DefaultBase, Key: key, HTTP: &httpcache.Client{Dir: cacheDir + "/oddspapi", MinGap: 5 * time.Second, UserAgent: userAgent}}
+	if c, err := oddsPapi(cacheDir); err == nil {
 		ts, err := c.Tournaments(ctx)
 		if err != nil {
 			return err
 		}
 		for _, l := range leagues {
 			fmt.Printf("%-16s oddspapi candidates:", l.Slug)
+			var hits []oddspapi.Tournament
 			for _, t := range ts {
 				if strings.Contains(strings.ToLower(t.TournamentName), strings.ToLower(l.OddsPapi.Search)) &&
 					strings.Contains(strings.ToLower(t.CategoryName), strings.ToLower(l.OddsPapi.Category)) {
 					fmt.Printf(" [%d %q / %s]", t.TournamentID, t.TournamentName, t.CategoryName)
+					hits = append(hits, t)
 				}
 			}
-			fmt.Println("  -> put `tournament_id` into config")
+			if len(hits) != 1 {
+				fmt.Println("  -> put `tournament_id` into config")
+				continue
+			}
+			// A unique candidate is stored like the API-HOCKEY id (COALESCE keeps the rest).
+			id := int32(hits[0].TournamentID)
+			if _, err := st.Q.UpsertLeague(ctx, dbq.UpsertLeagueParams{Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role, OddspapiTournamentID: &id}); err != nil {
+				return err
+			}
+			fmt.Printf("  -> stored; put `tournament_id: %d` into config\n", id)
 		}
 	} else {
-		slog.Warn("skip oddspapi: ODDSPAPI_KEY not set")
+		slog.Warn("skip oddspapi", "err", err)
 	}
 	return nil
 }
