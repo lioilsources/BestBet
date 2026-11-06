@@ -2,7 +2,7 @@
 
 **Projekt:** „Vlna" (pracovní název) — emocionální sázecí/predikční appka. Porovnává dvě „vlny" (momentum + stav soupisky) dvou týmů a z jednoho pravděpodobnostního modelu odvozuje všechny běžné trhy providera (1X2, přesný výsledek 0:1/1:0…, hendikep, poločas/třetina, O/U, BTTS).
 **Autor zadání:** Ol1n · **Datum:** 2026-11-04 · **Stav:** koncept → M0 validace
-**Stack (default Ol1n):** Go backend (sqlc, golang-migrate, Postgres) na JODA, Flutter klient, Spark na trénink/backtest, Caddy + Cloudflare Tunnel `vlna.ol1n.com`.
+**Stack (default Ol1n):** Go backend (sqlc, golang-migrate, Postgres) na JODA, Flutter klient, trénink i backtest v Go (gonum; změněno 2026-11-06, původně Spark), Caddy + Cloudflare Tunnel `vlna.ol1n.com`.
 
 ---
 
