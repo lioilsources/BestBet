@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#173a5c"/><stop offset="1" stop-color="#0b1a30"/></linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a414d"/><stop offset="1" stop-color="#15181d"/></linearGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#525b69"/><stop offset="1" stop-color="#242932"/></linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2fd3c4"/><stop offset="1" stop-color="#9af5b4"/></linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g transform="translate(512 512) scale(0.82) translate(-512 -540)">
+    <ellipse cx="512" cy="760" rx="320" ry="54" fill="#000" opacity="0.35"/>
+    <path d="M212 620 L212 700 A300 92 0 0 0 812 700 L812 620 Z" fill="url(#side)"/>
+    <ellipse cx="512" cy="620" rx="300" ry="92" fill="url(#top)"/>
+    <ellipse cx="512" cy="620" rx="300" ry="92" fill="none" stroke="#7d8798" stroke-width="8"/>
+    <path d="M232 670 A285 80 0 0 0 792 670" fill="none" stroke="#5c6574" stroke-width="5" opacity="0.7"/>
+    <path d="M150 420 C 230 300, 310 300, 380 420 S 530 540, 600 420 S 750 300, 874 360"
+          fill="none" stroke="url(#wave)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
