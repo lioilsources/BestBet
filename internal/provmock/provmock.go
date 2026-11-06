@@ -129,7 +129,7 @@ func (l *League) lambdas(g Game) (float64, float64) {
 // Fair returns the true 1x2, ml and total 5.5 probabilities of a game.
 func (l *League) Fair(g Game) canon.MarketProbs {
 	lh, la := l.lambdas(g)
-	reg := periods.Matrix(lh, la, 12, 0.3)
+	reg := periods.Matrix(lh, la, 12, 0) // results are independent Poisson too
 	p1 := periods.Matrix(lh*0.31, la*0.31, 12, 0)
 	return markets.Derive(reg, p1, 0.52)
 }
@@ -207,7 +207,14 @@ func (w *World) Price(l *League, g Game, b Book, market, sel string, at time.Tim
 	fair := l.Fair(g)[market]
 	hours := g.Start.Sub(at).Hours()
 	shrink := math.Min(1, math.Max(hours, 0)/120)
-	keys := sortedKeys(fair)
+	// Normalise within one line only ("over@5.5" with "under@5.5").
+	var keys []string
+	_, line, hasLine := strings.Cut(sel, "@")
+	for _, k := range sortedKeys(fair) {
+		if _, l, ok := strings.Cut(k, "@"); ok == hasLine && l == line {
+			keys = append(keys, k)
+		}
+	}
 	p := map[string]float64{}
 	tot := 0.0
 	for _, k := range keys {

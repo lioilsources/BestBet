@@ -1,6 +1,6 @@
 # Gate before push: formatting, generated code up to date, vet, unit tests.
 # Store integration tests run with `make test-db` (needs `make db`).
-.PHONY: check fmt build db test-db mock-run
+.PHONY: check fmt build db test-db mock-run mock-clean
 
 TEST_DATABASE_URL ?= postgres://bestbet:bestbet@127.0.0.1:5455/postgres?sslmode=disable
 
@@ -16,6 +16,8 @@ fmt:
 build:
 	CGO_ENABLED=0 go build -o bin/ingest-hockey ./cmd/ingest-hockey
 	CGO_ENABLED=0 go build -o bin/backtest ./cmd/backtest
+	CGO_ENABLED=0 go build -o bin/predict ./cmd/predict
+	CGO_ENABLED=0 go build -o bin/api ./cmd/api
 
 db:
 	docker compose up -d db
@@ -37,4 +39,10 @@ mock-run: build
 	DATABASE_URL='$(MOCK_DATABASE_URL)' MOCK_PROVIDERS=1 ./bin/ingest-hockey oddspapi -league swe-allsvenskan -from $(MOCK_FROM) -to $(MOCK_TO) -books mock-sharp,mock-cz1,mock-cz2
 	DATABASE_URL='$(MOCK_DATABASE_URL)' MOCK_PROVIDERS=1 ./bin/ingest-hockey odds -league swe-allsvenskan
 	DATABASE_URL='$(MOCK_DATABASE_URL)' MOCK_PROVIDERS=1 ./bin/ingest-hockey snapshot
+	DATABASE_URL='$(MOCK_DATABASE_URL)' ./bin/predict
 	DATABASE_URL='$(MOCK_DATABASE_URL)' ./bin/ingest-hockey report -out data/DATA_MOCK.md
+
+# Drops the mock database and the mock HTTP caches (never touches bestbet).
+mock-clean:
+	docker compose exec -T db psql -U bestbet -d postgres -c "DROP DATABASE IF EXISTS bestbet_mock WITH (FORCE)"
+	rm -rf data/cache/apihockey-mock data/cache/oddspapi-mock

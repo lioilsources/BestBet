@@ -15,7 +15,9 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 
 ## Mapa
 - `cmd/ingest-hockey`: CLI, subpříkazy viz hlavička `main.go`
-- `cmd/backtest`: walk-forward backtest jedné ligy → `docs/RESULTS_PHASE*.md`
+- `cmd/backtest`: walk-forward backtest jedné ligy → `docs/RESULTS_PHASE*.md`; `-gate` sázky a brána G1
+- `cmd/predict` (cron, živé predikce), `cmd/api` (read-only API, `docs/API.md`)
+- `internal/live`: predikce nadcházejících zápasů; `internal/edge`: hrana, EV, Kelly, zelená; `internal/api`: HTTP
 - `internal/canon`: kanonické struktury mezi ingestem, modelem a API (`docs/DATA_CONTRACT.md`)
 - `internal/model/periods` (baseline), `layers` (vrstvy nad baseline), `markets`, `calib`, `explain`; `internal/devig`; `internal/backtest`
 - `internal/features`, `internal/rating`: vstupy modelu (vlna, brankář, absence)
@@ -25,7 +27,7 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 - `internal/teammatch`: párování názvů týmů mezi zdroji
 - `internal/store`: pravidla slučování; `internal/ingest`: kroky ingestu
 - `internal/report`: generuje `DATA_M0.md`
-- `internal/provmock`: falešný API-HOCKEY a OddsPapi bez klíčů (`docs/MOCK.md`, `make mock-run`)
+- `internal/provmock`: falešný API-HOCKEY a OddsPapi bez klíčů (`docs/MOCK.md`, `docs/API.md`, `make mock-run`)
 - `config/leagues.yaml`: ligy, sezony, OT formáty, swehockey ID, aliasy
 
 ## Invarianty
@@ -37,6 +39,7 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 - Free tier API-HOCKEY má 100 req/den: každý nový dotaz přes `httpcache` s rozpočtem.
 - Testy bez sítě a bez `time.Now`. Fixtures jsou v `internal/swehockey/testdata`, syntetická liga v `periods.Simulate`.
 - `internal/model`, `features`, `rating` neznají DB ani HTTP; vstup i výstup je `canon`.
+- API ukazuje kurzy jen knih z `API_BOOKS` (CZ licence) a vždy s upozorněním § 5j.
 - Metrika modelu se nikdy neukazuje bez metriky trhu vedle (nebo výslovného „chybí“).
 - Odložené sezony (`docs/DECISIONS.md`) se k ladění nepoužívají.
 - `MOCK_PROVIDERS=1` jen proti DB `*_mock`; čísla z mocku nejsou výsledky.
@@ -46,4 +49,4 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 Žádné.
 
 ## Kam dál
-`docs/M0.md` (zdroje, slučování, cron), `docs/MOCK.md`, `docs/DECISIONS.md`, `docs/DATA_CONTRACT.md`, `docs/RESULTS_PHASE*.md`, `Prompts/`.
+`docs/M0.md` (zdroje, slučování, cron), `docs/MOCK.md`, `docs/API.md`, `docs/DECISIONS.md`, `docs/DATA_CONTRACT.md`, `docs/RESULTS_PHASE*.md`, `Prompts/`.

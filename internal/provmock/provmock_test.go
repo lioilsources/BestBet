@@ -106,3 +106,15 @@ func TestPricesConvergeToFair(t *testing.T) {
 		t.Fatalf("close error %.3f should be well below open %.3f", closeErr, openErr)
 	}
 }
+
+func TestTotalPricesAreFairPerLine(t *testing.T) {
+	w := world(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC))
+	l := &w.Leagues[0]
+	g := l.Games[10]
+	b := Books[0]
+	at := g.Start.Add(-5 * time.Minute)
+	over, under := w.Price(l, g, b, "total", "over@5.5", at), w.Price(l, g, b, "total", "under@5.5", at)
+	if m := 1/over + 1/under - 1; m < 0.01 || m > 0.04 {
+		t.Fatalf("total 5.5 margin %.3f (over %.2f under %.2f)", m, over, under)
+	}
+}

@@ -147,3 +147,29 @@ func SortMatches(ms []Match) {
 		return ms[i].ID < ms[j].ID
 	})
 }
+
+// GameInfo is a game with display names, as the API lists it.
+type GameInfo struct {
+	Match
+	LeagueName string `json:"league_name"`
+	HomeName   string `json:"home_name"`
+	AwayName   string `json:"away_name"`
+	Status     string `json:"status"` // scheduled | live | finished | postponed | cancelled | other
+}
+
+// JournalEntry is one bet a user recorded (01 §1 bod 4).
+type JournalEntry struct {
+	ID           int64     `json:"id"`
+	GameID       *int64    `json:"game_id,omitempty"`
+	Book         string    `json:"book"`
+	Market       string    `json:"market"`
+	Selection    string    `json:"selection"`
+	Line         *float64  `json:"line,omitempty"`
+	Price        float64   `json:"price"`
+	Stake        float64   `json:"stake"`
+	PlacedAt     time.Time `json:"placed_at"`
+	ModelP       *float64  `json:"model_p,omitempty"`
+	ClosingPrice *float64  `json:"closing_price,omitempty"`
+	Result       *string   `json:"result,omitempty"`
+	Note         *string   `json:"note,omitempty"`
+}
