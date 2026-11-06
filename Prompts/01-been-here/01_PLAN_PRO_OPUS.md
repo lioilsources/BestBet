@@ -19,9 +19,9 @@ každá brána níže odkazuje na námitku, kterou má vyvrátit.
 | Sázkovky v MVP | Tipsport, Chance, Fortuna, Betano, Sazkabet (jen licencované v ČR) | Právně bezpečná množina. Viz `02_PROVIDERI_A_FIT.md`. |
 | Referenční „ostrý“ kurz | Pinnacle přes agregátor (OddsPapi / Odds-API.io), fallback Betfair Exchange přes agregátor | Pinnacle API je od 23. 7. 2025 zavřené pro veřejnost. Betfair není v ČR licencovaný, ale jeho **cena** je veřejná informace a smíme ji použít jako referenci. |
 | Monetizace | Předplatné (Pro). Affiliate **pouze** k licencovaným CZ operátorům, a až ve fázi 7. | Affiliate k nelicencovaným = reklama na nelegální hazard (metodika CS MI‑2025‑023). |
-| Backend | Ano. Python (model, ingest, scheduler), Postgres + Timescale, hostováno v EU. | Model potřebuje historii, backtest a cron. On‑device to nejde. |
+| Backend | Ano. **Go** pro vše: ingest, features, model, backtest, API, cron. Postgres (sqlc, golang-migrate), hostováno v EU. Žádný Python, žádný Spark. | Model potřebuje historii, backtest a cron. On‑device to nejde. Data jsou tisíce zápasů za sezonu, ne miliardy řádků; Go s gonum to spočítá v sekundách a jeden jazyk znamená jeden build, jeden test gate a jeden deploy. |
 | Mobil | Flutter, Riverpod, drift (stejný stack jako Been Here). iOS i Android ze stejného kódu. | Autor ho zná. |
-| Repo | Nové repo `vlna` (monorepo: `model/`, `api/`, `app/`). | Been Here je privacy‑first on‑device appka; mixovat ji s betting backendem je špatně po všech stránkách. |
+| Repo | `lioilsources/BestBet` (už existuje, Go modul `github.com/lioilsources/BestBet`): `cmd/`, `internal/`, Flutter klient v `app/`. | Been Here je privacy‑first on‑device appka; mixovat ji s betting backendem je špatně po všech stránkách. |
 | Název | TBD. Ne „sázka“, „bet“, „tip“ v názvu (store review, reklama). | |
 
 ## 1. Produkt
@@ -127,33 +127,66 @@ Pro tým `T` před zápasem `m`:
 
 ## 3. Architektura
 
+Jeden Go modul, stejné konvence jako dnešní `cmd/ingest-hockey` a
+`CLAUDE.md` repa. Nic z toho, co tam je, se nepřepisuje; model se přidává
+vedle ingestu.
+
 ```
-vlna/
-  model/        Python 3.12, polars, numpy, scipy, statsmodels, pymc (jen pokud bude třeba)
-    ingest/     adaptéry: sportmonks, apisports, enetpulse|sportradar, oddsapi_io, oddspapi
-    features/   vlna, absence, lavička, únava
-    models/     dixon_coles, hockey_periods, calibration
-    backtest/   walk-forward harness, CLV, Brier, log-loss, PnL simulace
-    cli/        `vlna backtest --sport football --from 2021 --to 2025`
-  api/          FastAPI, Postgres+Timescale, APScheduler; read-only pro appku
-  app/          Flutter, Riverpod, drift (cache + deník offline)
-  docs/
+cmd/
+  ingest-hockey/   existuje: migrate, leagues, games, swehockey, odds, snapshot, oddspapi, report
+  ingest-football/ fáze 1 (druhý sport): football-data.co.uk, Sportmonks
+  backtest/        `backtest -sport hockey -league swe-allsvenskan -from 2022 -to 2025 -ablation goalie,wave,duo`
+  predict/         cron: pro zápasy T-24h/T-1h/po potvrzení sestavy spočítá rozdělení skóre, trhy, contributions → tabulky
+  api/             net/http (stdlib ServeMux, Go 1.22+ patterny), read-only pro appku; chi jen pokud bude třeba middleware
+  series-sim/      Monte Carlo zbytku play-off série (00 §1.4.7)
+internal/
+  db/              existuje: migrace, sqlc; přibývají tabulky players, player_match_stats, player_absence_games,
+                   units, unit_matches, duos, duo_matches, predictions (jsonb matice + contributions), journal
+  apihockey/, oddspapi/, swehockey/, httpcache/, teammatch/, store/, ingest/   existují
+  features/        vlna (EWMA + trend + rozptyl), absence (w[p]), lavička, únava/cestování, phase (play-off)
+  rating/          Kalman rating týmu + rychlost (dlouhá vlna, 00 §1.4.2); gólman: SV%/GSAx se shrinkagem
+  model/
+    dixoncoles/    bivariátní Poisson s ρ korekcí; MLE přes gonum/optimize (L-BFGS), časové váhy
+    periods/       hokej: λ per třetina, empty net, OT 3v3 a nájezdy jako binární krok, play-off multiplikátory
+    markets/       z matice P(h,a): 1X2, ML, DC, DNB, AH/EH, O/U, přesný výsledek, třetina/poločas, HT/FT, BTTS
+    calib/         izotonická regrese (PAVA, vlastní, ~80 řádků) a Platt; reliability bins
+    explain/       dekompozice příspěvků vstupů (permutační Shapley, malý model → levné)
+  devig/           Shin, proporcionální, power; medián knih
+  backtest/        walk-forward po kolech, Brier, log-loss, CLV, flat ROI, Kelly simulace, FDR (Benjamini–Hochberg), žebřík 1/5/10
+  report/          existuje (DATA_M0.md); přibývá RESULTS_M1.md generátor
+app/               Flutter, Riverpod, drift (cache + deník offline)
+docs/
 ```
+
+Knihovny: `gonum.org/v1/gonum` (mat, optimize, stat, distuv) jako jediná
+numerická závislost; `golang.org/x/exp/rand` nebo `math/rand/v2` se semenem
+pro reprodukovatelné simulace. Bez cgo. Grafy pro reporty generuje appka
+nebo se vykreslí v Markdownu jako tabulky; žádný matplotlib.
 
 Pravidla:
 
-- `model/` nezná FastAPI ani Flutter. Vstupy a výstupy jsou parquet/
-  dataclassy. Testovatelné bez sítě (fixtures = zmražené odpovědi API).
-- Každý adaptér v `ingest/` má **jeden** úkol: převést cizí formát na náš
-  kanonický (`Match`, `Lineup`, `PlayerMinutes`, `OddsSnapshot`). Výměna
-  poskytovatele = nový adaptér, nic víc.
-- Kurzy se **snapshotují** (každých 15 min předzápas, 1 min poslední hodinu)
-  a nikdy nepřepisují. Bez historie kurzů není CLV a bez CLV není nic.
+- `internal/model`, `internal/features`, `internal/rating` neznají databázi,
+  HTTP ani Flutter. Vstupy jsou Go struktury (`Match`, `Lineup`,
+  `PlayerMinutes`, `OddsSnapshot`), výstupy taky. Testovatelné bez sítě a
+  bez `time.Now` (viz CLAUDE.md), fixtures v `testdata/`.
+- Každý adaptér v `internal/<zdroj>` má **jeden** úkol: převést cizí formát
+  na kanonický. Výměna poskytovatele = nový balíček, nic víc. Pravidla
+  slučování zůstávají ve `store` (API‑HOCKEY primární, ostatní doplňují).
+- Kurzy se **snapshotují** (T‑24h, T‑1h, closing; v poslední hodině
+  častěji) a nikdy nepřepisují; `odds_snapshots` je append‑only (invariant
+  z CLAUDE.md). Bez historie kurzů není CLV a bez CLV není nic.
+- Predikce se ukládají s verzí modelu, časem výpočtu a vstupy, ze kterých
+  vznikly (hash sestavy, snapshot kurzů). Backtest i produkce volají tutéž
+  funkci `model.Predict(ctx, inputs) (Prediction, error)`; rozdíl je jen
+  v tom, odkud přijdou vstupy.
 - Appka je tenký klient. Žádný model na telefonu. Deník sázek je lokální
   (drift) s volitelnou synchronizací; uživatel může appku používat bez
   účtu.
 - Žádná třetí‑stranová analytika v appce. Vlastní události do našeho API,
   anonymní ID.
+- `make check` (gofmt, sqlc diff, vet, go test) je gate před každým pushem;
+  backtest nad fixtures musí být součástí `go test`, aby regresi modelu
+  chytil CI, ne člověk.
 
 ## 4. Data a poskytovatelé (konkrétně)
 
@@ -173,9 +206,11 @@ Rozpočet na data v MVP: 300–500 €/měs. Před prvním předplatitelem.
 
 ### Fáze 0 — Rozhodnutí a kostra (1 týden)
 
-Zakladatel zodpoví sekci 0. Opus: nové repo, `model/` s prázdnými balíčky,
-CI (ruff, mypy, pytest), `.env.example`, kanonický datový model, dokument
-`docs/DATA_CONTRACT.md`. Žádný kód modelu.
+Zakladatel zodpoví sekci 0. Opus: v existujícím repu `BestBet` založí
+prázdné balíčky `internal/features`, `internal/rating`, `internal/model/...`,
+`internal/backtest`, `cmd/backtest`; migrace pro nové tabulky (§3);
+kanonické Go struktury s testy serializace; `docs/DATA_CONTRACT.md`. CI je
+už `make check`. Žádný kód modelu.
 
 Akceptace: `make check` zelené; kanonický model má testy serializace.
 
@@ -230,7 +265,7 @@ Jestli neprojde nic: konec, archivace, výsledky do `docs/POSTMORTEM.md`.
 
 ### Fáze 4 — Živé kurzy a API (2 týdny)
 
-Snapshoty kurzů CZ sázkovek + reference. FastAPI read‑only: `/matches`,
+Snapshoty kurzů CZ sázkovek + reference. `cmd/api` (net/http) read‑only: `/matches`,
 `/matches/{id}/waves`, `/matches/{id}/markets`, `/journal` (auth). Denní
 cron: stáhnout zápasy, sestavy, přepočítat. Monitoring zpoždění dat
 (sestava přišla kdy vs. výkop).
@@ -289,7 +324,9 @@ trhy a krypto sázkovky **ne**, dokud se nezmění regulace (viz 02).
   rozhodni sám a zapiš do `docs/DECISIONS.md`.
 - Když se poskytovatel dat ukáže jako nepoužitelný (pokrytí, cena, ToS),
   nepřecházej potichu na scraping. Zapiš, zastav fázi, navrhni alternativu.
-- Kód modelu je v Pythonu; ne Dart. Appka model nikdy nepočítá.
+- Kód modelu je v Go; ne Dart, ne Python. Appka model nikdy nepočítá.
+  Numerika přes gonum; vlastní implementace jen tam, kde gonum nic nemá
+  (PAVA pro izotonickou regresi, Shin devig, Dixon–Coles ρ).
 - Scraping webů sázkových kanceláří je mimo. Tečka. Čtení agregátorů
   (OddsPortal, Flashscore, Sofascore) přes Apify je dovolené jen pro
   výzkumná data do backtestu ve fázích 1–3; pravidla v `05_APIFY_SCRAPERY.md`.

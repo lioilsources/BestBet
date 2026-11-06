@@ -18,8 +18,10 @@ tahle sada je doplněk a kde se liší, platí 00.
 
 ## Kde se liší od 00 (platí 00)
 
-- **Stack.** `01_PLAN_PRO_OPUS.md` počítá s Pythonem (model, FastAPI) a novým
-  monorepem `vlna/`. Repo běží na Go + sqlc + Postgres, trénink ve Sparku.
+- **Stack.** Vyřešeno 2026-11-06: `01_PLAN_PRO_OPUS.md` §0 a §3 jsou přepsané
+  na **Go pro všechno** (ingest, model, backtest, API, cron) v tomto repu,
+  s gonum jako jedinou numerickou závislostí. Spark z 00 §hlavička není
+  potřeba; data mají tisíce řádků za sezonu.
 - **Ligy.** 01 začíná fotbalem top 5 + Extraliga/NHL. 00 se pivotovalo na
   hokej a okrajové ligy (HockeyAllsvenskan, Chance liga, DEL2, AHL); top ligy
   jen jako kontrolní skupina.
