@@ -2,6 +2,16 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-06 (fáze 2, vlna a únava)
+
+- **Vrstvy jako jeden zásobník** (`internal/model/layers`): každá vrstva je dvojice příznaků (x_dom, x_hosté) přičtená k log λ s koeficientem β; všechny β se fitují společně Newtonem s ridge 1, vrstva s < 100 aktivními tréninkovými zápasy se nefituje.
+- **Stacking out-of-sample:** β se fitují na intenzitách baseline, které byly pro tréninkový zápas předpovězené před ním (walk-forward cache, živě z tabulky `predictions`). Fit proti baseline přefitované na stejných zápasech dával vlně záporné β: baseline zpětně „ví“ formu, kterou vlna měří. Walk proto začíná už v zahřívací sezoně a hodnotí se od `-from`.
+- **Vlna = Kalmanův rating s rychlostí** (`rating.WaveTimeline`): úroveň v gólech rozdílu, rychlost na zápas, rozptyl pozorování 6, šum úrovně 0,003, šum rychlosti 0,0002, útlum rychlosti 0,9, mezi sezonami úroveň × 0,75. Pevné předem. Dvě vrstvy: `wave-level` (Kalmanova mezera minus očekávání baseline) a `wave-vel` (rozdíl rychlostí × 10).
+- **Únava `b2b`:** zápas den po zápase (< 36 h) soupeře minus vlastní.
+- **Výsledek na Allsvenskan (`docs/RESULTS_PHASE2.md`):** žádná vrstva log-loss nezlepšuje (goalie +0,0007, wave-level +0,0009, wave-vel +0,0003, vše +0,0024; žádná neprošla BH). Do modelu nejde nic; baseline `periods-v1` zůstává. Vlna zůstává jako UI narativ (00 §1.4.2).
+- **b2b je v Allsvenskan nulová informace pro 1X2:** liga hraje celá kola pátek/sobota, takže back-to-back mají oba týmy (68 zápasů, jen 2 s jedním unaveným). Hypotéza na později: společná únava a celkový počet gólů (trh total), testovat jen na ladicí sezoně a starších.
+- **Test „kopíruje vlna trh“** čeká na otevírací a uzavírací kurzy.
+
 ## 2026-11-06 (fáze 2, brankář)
 
 - **Vrstva brankář `periods-v1+goalie`:** úprava `adj = log((1−SV_start)/(1−SV_tým))`, kde SV je stažené k ligovému průměru (prior 600 střel, poločas 365 dní) a počítané jen z dřívějších zápasů. Koeficient β se fituje v každém okně na tréninku. Konfigurace je pevná předem.

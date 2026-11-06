@@ -13,6 +13,7 @@ type Delta struct {
 	N            int
 	MeanDelta1X2 float64
 	CILo, CIHi   float64
+	P            float64 // two-sided p-value of mean Δ = 0 (normal approximation)
 	MeanDeltaML  float64
 }
 
@@ -62,7 +63,11 @@ func PairedDelta(base, variant []Row) map[int]Delta {
 			v += (x - mean) * (x - mean)
 		}
 		se := math.Sqrt(v / (n - 1) / n)
-		out[k] = Delta{Season: k, N: len(a.d), MeanDelta1X2: mean, CILo: mean - 1.96*se, CIHi: mean + 1.96*se, MeanDeltaML: ml}
+		pv := 1.0
+		if se > 0 {
+			pv = math.Erfc(math.Abs(mean/se) / math.Sqrt2)
+		}
+		out[k] = Delta{Season: k, N: len(a.d), MeanDelta1X2: mean, CILo: mean - 1.96*se, CIHi: mean + 1.96*se, P: pv, MeanDeltaML: ml}
 	}
 	return out
 }

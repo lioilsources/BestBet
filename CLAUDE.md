@@ -17,7 +17,7 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 - `cmd/ingest-hockey`: CLI, subpříkazy viz hlavička `main.go`
 - `cmd/backtest`: walk-forward backtest jedné ligy → `docs/RESULTS_PHASE*.md`
 - `internal/canon`: kanonické struktury mezi ingestem, modelem a API (`docs/DATA_CONTRACT.md`)
-- `internal/model/periods` (baseline), `markets`, `calib`, `explain`; `internal/devig`; `internal/backtest`
+- `internal/model/periods` (baseline), `layers` (vrstvy nad baseline), `markets`, `calib`, `explain`; `internal/devig`; `internal/backtest`
 - `internal/features`, `internal/rating`: vstupy modelu (vlna, brankář, absence)
 - `internal/db/migrations`: golang-migrate, embed; `internal/db/dbq` je generované sqlc
 - `internal/apihockey`, `internal/oddspapi`, `internal/swehockey`: klienti a parsery zdrojů
@@ -38,6 +38,7 @@ sqlc generate   # po změně internal/db/queries nebo migrací
 - `internal/model`, `features`, `rating` neznají DB ani HTTP; vstup i výstup je `canon`.
 - Metrika modelu se nikdy neukazuje bez metriky trhu vedle (nebo výslovného „chybí“).
 - Odložené sezony (`docs/DECISIONS.md`) se k ladění nepoužívají.
+- Koeficienty vrstev se fitují jen na out-of-sample predikcích baseline (`layers.Inputs.OOS`).
 
 ## Odchylky
 Žádné.

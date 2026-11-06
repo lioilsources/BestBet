@@ -1,6 +1,6 @@
 # Fáze 1 — baseline (bez vlny, bez brankáře)
 
-Liga `swe-allsvenskan`, model `periods-v1`, vygenerováno 2026-11-06 05:30 UTC příkazem `backtest`. Hyperparametry: poločas vážení 180 dní, ridge 5, navýšení remíz true, max 12 gólů.
+Liga `swe-allsvenskan`, model `periods-v1`, vygenerováno 2026-11-06 07:10 UTC příkazem `backtest`. Hyperparametry: poločas vážení 180 dní, ridge 5, navýšení remíz true, max 12 gólů.
 
 **Závěr:** model je o 6,4 % lepší než základní četnosti (log-loss 1X2, 846 zápasů); **srovnání s trhem chybí, protože pro tyto zápasy nejsou kurzy**, takže o hraně výsledek nic neříká.
 

@@ -22,6 +22,9 @@ type SimParams struct {
 	// GoalieGap > 0 gives every team a starter (concedes exp(-gap) × goals) and a
 	// backup (exp(+gap) ×) who starts 30 % of games; goalie lines are filled.
 	GoalieGap float64
+	// DriftSD > 0 lets att and def follow a random walk (sd per game day), so
+	// recent form carries information the time-weighted baseline lags behind.
+	DriftSD float64
 }
 
 // DefaultSim mimics HockeyAllsvenskan: 14 teams, 52 games each, ~2.8 goals/team.
@@ -30,7 +33,8 @@ func DefaultSim() SimParams {
 		Start: time.Date(2022, 9, 15, 17, 0, 0, 0, time.UTC)}
 }
 
-// SimTruth is the generating parameters.
+// SimTruth is the generating parameters (at the end of the simulation when
+// DriftSD > 0).
 type SimTruth struct {
 	Att, Def map[int32]float64
 }
@@ -106,6 +110,12 @@ func Simulate(p SimParams) ([]canon.Match, SimTruth) {
 					// ~3.5 games per team per week
 					if id%7 == 0 {
 						day = day.Add(24 * time.Hour)
+						if p.DriftSD > 0 {
+							for t := 1; t <= p.Teams; t++ {
+								truth.Att[int32(t)] += r.NormFloat64() * p.DriftSD
+								truth.Def[int32(t)] += r.NormFloat64() * p.DriftSD
+							}
+						}
 					}
 				}
 			}

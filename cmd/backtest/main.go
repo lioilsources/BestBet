@@ -13,7 +13,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"math"
 	"os"
 	"sort"
 	"strings"
@@ -23,7 +22,6 @@ import (
 	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/model/layers"
 	"github.com/lioilsources/BestBet/internal/model/periods"
-	"github.com/lioilsources/BestBet/internal/rating"
 	"github.com/lioilsources/BestBet/internal/store"
 )
 
@@ -41,7 +39,7 @@ func run() error {
 	holdout := flag.Int("holdout", 2025, "first held-out season (0 = none)")
 	regularOnly := flag.Bool("regular-only", true, "evaluate regular season only (play-off has its own layer, 00 §1.4.7)")
 	out := flag.String("out", "", "write the report here (default stdout)")
-	ablation := flag.String("ablation", "", "layer to compare against the baseline: goalie")
+	ablate := flag.String("ablation", "", "layers to compare against the baseline: all or a comma list of "+strings.Join(layers.All, ","))
 	flag.Parse()
 
 	dsn := os.Getenv("DATABASE_URL")
@@ -58,10 +56,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// The walk starts with the first game of any season so that layers have
+	// out-of-sample baseline predictions to fit on; rows before -from are dropped.
 	var eval []canon.Match
 	var start, end time.Time
 	for _, m := range matches {
-		if m.Season < *from || m.Season > *to || !m.Played() {
+		if m.Season > *to || !m.Played() {
 			continue
 		}
 		if start.IsZero() || m.StartAt.Before(start) {
@@ -70,7 +70,9 @@ func run() error {
 		if m.StartAt.After(end) {
 			end = m.StartAt
 		}
-		eval = append(eval, m)
+		if m.Season >= *from {
+			eval = append(eval, m)
+		}
 	}
 	if len(eval) == 0 {
 		return fmt.Errorf("no played games in seasons %d-%d", *from, *to)
@@ -81,12 +83,9 @@ func run() error {
 	}
 	walk := backtest.Config{From: start.Truncate(24 * time.Hour), To: end.Add(24 * time.Hour), MinTrain: 150}
 	keep := func(rows []backtest.Row) []backtest.Row {
-		if !*regularOnly {
-			return rows
-		}
 		var kept []backtest.Row
 		for _, r := range rows {
-			if r.Match.Phase == "regular" {
+			if r.Match.Season >= *from && (!*regularOnly || r.Match.Phase == "regular") {
 				kept = append(kept, r)
 			}
 		}
@@ -106,15 +105,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	switch *ablation {
-	case "":
-	case "goalie":
-		md, err = goalieAblation(matches, odds, cfg, walk, keep, in, rows)
+	if *ablate != "" {
+		names := layers.All
+		if *ablate != "all" {
+			names = strings.Split(*ablate, ",")
+		}
+		in.Title = "Fáze 2 — ablace vrstev"
+		md, err = ablation(matches, odds, cfg, walk, keep, in, rows, names)
 		if err != nil {
 			return err
 		}
-	default:
-		return fmt.Errorf("unknown -ablation %q", *ablation)
 	}
 	if *out == "" {
 		fmt.Print(md)
@@ -127,66 +127,132 @@ func run() error {
 	return nil
 }
 
-func goalieAblation(matches []canon.Match, odds map[int64][]canon.OddsQuote, cfg periods.Config, walk backtest.Config,
-	keep func([]backtest.Row) []backtest.Row, baseIn backtest.ReportInput, baseRows []backtest.Row) (string, error) {
-	gcfg := rating.DefaultGoalieConfig()
-	tl := rating.GoalieTimeline(matches, gcfg)
-	var betas []float64
-	fit := func(train []canon.Match, asOf time.Time) (backtest.Predictor, error) {
-		m, err := layers.Fit(train, asOf, layers.Config{Base: cfg, Goalie: true}, tl)
-		if err == nil {
-			betas = append(betas, m.GoalieBeta)
+// ablation runs the baseline with each layer alone and with all of them, on the
+// same walk, and renders the phase 2 table (01 §5 fáze 2). Layers must improve
+// log-loss to stay; p-values are Benjamini–Hochberg corrected over the layers.
+func ablation(matches []canon.Match, odds map[int64][]canon.OddsQuote, cfg periods.Config, walk backtest.Config,
+	keep func([]backtest.Row) []backtest.Row, baseIn backtest.ReportInput, baseRows []backtest.Row, names []string) (string, error) {
+	type variant struct {
+		label  string
+		layers []string
+		rows   []backtest.Row
+		betas  map[string][]float64
+		lastN  map[string]int
+		delta  map[int]backtest.Delta
+	}
+	var vs []*variant
+	for _, l := range names {
+		vs = append(vs, &variant{label: l, layers: []string{l}})
+	}
+	if len(names) > 1 {
+		vs = append(vs, &variant{label: "vše", layers: names})
+	}
+	for _, v := range vs {
+		in := layers.BuildInputs(matches)
+		v.betas, v.lastN = map[string][]float64{}, map[string]int{}
+		lc := layers.Config{Base: cfg, Layers: v.layers}
+		fit := func(train []canon.Match, asOf time.Time) (backtest.Predictor, error) {
+			m, err := layers.Fit(train, asOf, lc, in)
+			if err == nil {
+				for l, b := range m.Beta {
+					v.betas[l] = append(v.betas[l], b)
+					v.lastN[l] = m.N[l]
+				}
+			}
+			return m, err
 		}
-		return m, err
-	}
-	rows, err := backtest.Run(matches, odds, fit, walk)
-	if err != nil {
-		return "", err
-	}
-	rows = keep(rows)
-	known := 0
-	var adjs []float64
-	for _, r := range rows {
-		if st, ok := tl[r.Match.ID]; ok && st[canon.Home].Known && st[canon.Away].Known {
-			known++
-			adjs = append(adjs, st[canon.Home].Adj(), st[canon.Away].Adj())
+		rows, err := backtest.Run(matches, odds, fit, walk)
+		if err != nil {
+			return "", fmt.Errorf("ablation %s: %w", v.label, err)
 		}
+		v.rows = keep(rows)
+		v.delta = backtest.PairedDelta(baseRows, v.rows)
 	}
-	adjSD, adjBig := 0.0, 0
-	for _, a := range adjs {
-		adjSD += a * a
-		if math.Abs(a) > 0.05 {
-			adjBig++
-		}
+	var pvals []float64
+	for _, v := range vs[:len(names)] {
+		pvals = append(pvals, v.delta[0].P)
 	}
-	if len(adjs) > 0 {
-		adjSD = math.Sqrt(adjSD / float64(len(adjs)))
-	}
-	sort.Float64s(betas)
-	in := baseIn
-	in.Title = "Fáze 2 — vrstva brankář"
-	in.ModelVersion = layers.Version
-	in.Rows = rows
-	variant, err := backtest.RenderResults(in)
-	if err != nil {
-		return "", err
-	}
-	deltas := backtest.PairedDelta(baseRows, rows)
-	all := deltas[0]
-	verdict := "vrstva log-loss **nezlepšuje** (interval obsahuje nulu nebo je kladný)"
-	if all.CIHi < 0 {
-		verdict = "vrstva log-loss **zlepšuje** (celý 95% interval je pod nulou)"
-	}
+	sig := backtest.BenjaminiHochberg(pvals, 0.10)
+
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s\n## Ablace: brankář vs. baseline\n\n", variant)
-	fmt.Fprintf(&b, "**Závěr ablace:** %s; Δ = %s na %d zápasech. Srovnání s trhem chybí, dokud nejsou kurzy.\n\n", verdict, cz("%+.4f", all.MeanDelta1X2), all.N)
-	b.WriteString(backtest.RenderAblation("brankář", deltas, baseIn.Holdout))
-	fmt.Fprintf(&b, "\nFitované β (%d oken walk-forward): min %s, medián %s, max %s. β = 1 znamená, že rozdíl ve stažené úspěšnosti zákroků se promítá do gólů jedna ku jedné; β kolem 0 znamená, že vrstva nic nenese. Shrinkage: prior %.0f střel, poločas %.0f dní.\n",
-		len(betas), cz("%.2f", betas[0]), cz("%.2f", betas[len(betas)/2]), cz("%.2f", betas[len(betas)-1]), gcfg.PriorShots, gcfg.HalfLifeDays)
-	fmt.Fprintf(&b, "\nSignál na vstupu: směrodatná odchylka adj = %s (log násobek gólů soupeře), |adj| > 0,05 u %d z %d startů. Malé adj znamená, že startér se od týmového průměru skoro neliší (jednička chytá většinu zápasů).\n",
-		cz("%.4f", adjSD), adjBig, len(adjs))
-	fmt.Fprintf(&b, "\nStartující brankáři známí u obou týmů: %d z %d hodnocených zápasů. Ve zbytku vrstva nic nemění.\n", known, len(rows))
+	base, err := backtest.RenderResults(baseIn)
+	if err != nil {
+		return "", err
+	}
+	b.WriteString(base)
+	b.WriteString("\n## Ablace\n\n")
+	b.WriteString("Každá varianta běží na stejných oknech jako baseline; Δ je párový rozdíl log-loss 1X2 (varianta − baseline), záporné = vrstva pomáhá. ")
+	b.WriteString("Koeficienty vrstev se fitují out-of-sample: tréninkový zápas vstupuje s intenzitami baseline, které pro něj byly předpovězené před zápasem. ")
+	b.WriteString("p-hodnoty jsou korigované Benjamini–Hochberg (q = 0,10) přes jednotlivé vrstvy.\n\n")
+	b.WriteString("| Vrstva | Zápasů | Δ celkem | 95% interval | p | BH | Δ odložené | medián β | hodnocených s vrstvou | tréninkových s vrstvou (poslední okno) |\n|---|---|---|---|---|---|---|---|---|---|\n")
+	for i, v := range vs {
+		d := v.delta[0]
+		bh := "—"
+		if i < len(names) {
+			bh = "ne"
+			if sig[i] && d.MeanDelta1X2 < 0 {
+				bh = "**ano**"
+			}
+		}
+		var beta, ns []string
+		for _, l := range v.layers {
+			ns = append(ns, fmt.Sprint(v.lastN[l]))
+			bs := append([]float64(nil), v.betas[l]...)
+			sort.Float64s(bs)
+			med := 0.0
+			if len(bs) > 0 {
+				med = bs[len(bs)/2]
+			}
+			beta = append(beta, cz("%.2f", med))
+		}
+		ho := holdoutDelta(baseRows, v.rows, baseIn.Holdout)
+		fmt.Fprintf(&b, "| %s | %d | %s | %s až %s | %s | %s | %s | %s | %d | %s |\n", v.label, d.N, cz("%+.4f", d.MeanDelta1X2),
+			cz("%+.4f", d.CILo), cz("%+.4f", d.CIHi), cz("%.3f", d.P), bh, ho, strings.Join(beta, " / "), active(v.rows), strings.Join(ns, " / "))
+	}
+	b.WriteString("\nVrstva s méně než 100 tréninkovými zápasy, kde je aktivní, se nefituje (β = 0) a nic nemění.\n")
+	b.WriteString("\nVrstva zůstává jen tehdy, když Δ je záporné celkem i na odložených sezonách a projde BH. Ostatní jdou ven a zůstávají jako informace v UI.\n")
+	for _, v := range vs {
+		fmt.Fprintf(&b, "\n### %s\n\n", v.label)
+		b.WriteString(backtest.RenderAblation(v.label, v.delta, baseIn.Holdout))
+	}
+	b.WriteString("\n## Kopíruje vlna trh?\n\nKorelace rezidua modelu s pohybem kurzu od otevření k uzavření (01 §5 fáze 2) vyžaduje otevírací i uzavírací kurzy. Pro Allsvenskan 2023–2026 je nemáme, takže test čeká na data.\n")
 	return b.String(), nil
+}
+
+func holdoutDelta(base, variant []backtest.Row, holdout int) string {
+	if holdout == 0 {
+		return "—"
+	}
+	var bh, vh []backtest.Row
+	for _, r := range base {
+		if r.Match.Season >= holdout {
+			bh = append(bh, r)
+		}
+	}
+	for _, r := range variant {
+		if r.Match.Season >= holdout {
+			vh = append(vh, r)
+		}
+	}
+	d, ok := backtest.PairedDelta(bh, vh)[0]
+	if !ok {
+		return "—"
+	}
+	return cz("%+.4f", d.MeanDelta1X2)
+}
+
+// active counts rows where at least one layer moved the prediction.
+func active(rows []backtest.Row) int {
+	n := 0
+	for _, r := range rows {
+		for _, c := range r.Pred.Contributions {
+			if c.PP != 0 {
+				n++
+				break
+			}
+		}
+	}
+	return n
 }
 
 func cz(format string, v float64) string { return strings.Replace(fmt.Sprintf(format, v), ".", ",", 1) }
