@@ -8,10 +8,11 @@ Hokejový pravděpodobnostní model („Vlna“) a test edge proti trhu na okraj
 ## Build a test
 ```
 make check      # gate před pushem: gofmt, sqlc diff, vet, go test
-make db         # lokální Postgres z compose.yml (127.0.0.1:5455)
-make test-db    # integrační test store proti lokálnímu Postgresu
+make test-db    # integrační test store proti Postgresu na JODĚ (URL v .env)
 sqlc generate   # po změně internal/db/queries nebo migrací
 ```
+
+Na Macu neběží Docker ani Postgres. DB je na JODĚ (`deploy/joda`, `docs/DEPLOY.md`), URL v `.env`.
 
 ## Mapa
 - `cmd/ingest-hockey`: CLI, subpříkazy viz hlavička `main.go`

@@ -31,6 +31,7 @@ Pravidla, která API drží:
 
 ```sh
 make mock-run
-DATABASE_URL=postgres://bestbet:bestbet@127.0.0.1:5455/bestbet_mock?sslmode=disable API_BOOKS=mock-cz1,mock-cz2 ./bin/api
+set -a && . ./.env && set +a
+DATABASE_URL="$MOCK_DATABASE_URL" API_BOOKS=mock-cz1,mock-cz2 ./bin/api
 curl '127.0.0.1:8096/matches?date=2026-11-07'
 ```

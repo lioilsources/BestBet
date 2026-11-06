@@ -82,4 +82,8 @@ leagues:
     oddspapi: {search: NHL, category: USA}
 
 # Manual spellings that fuzzy matching cannot resolve: source -> league -> alias -> canonical name.
-aliases: {}
+aliases:
+  nhl:
+    nhl:
+      # Utah renamed its team for 2025/26; same franchise, one team row.
+      Mammoth: Utah Hockey Club

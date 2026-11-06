@@ -1,6 +1,7 @@
 // Command ingest-hockey fills the M0 tables (plan §1.4.5) and writes DATA_M0.md.
 //
-//	ingest-hockey migrate
+//	ingest-hockey migrate                      # creates the database if missing
+//	ingest-hockey drop-mock                    # drops DATABASE_URL, only *_mock
 //	ingest-hockey leagues                      # sync config, resolve API ids
 //	ingest-hockey games    [-league s] [-season y]
 //	ingest-hockey swehockey [-league s] [-season y] [-goalies=true]
@@ -42,7 +43,7 @@ const userAgent = "BestBet-M0/0.1 (research; low rate)"
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|leagues|games|swehockey|nhl|odds|snapshot|oddspapi|report> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|drop-mock|leagues|games|swehockey|nhl|odds|snapshot|oddspapi|report> [flags]")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -71,7 +72,17 @@ func run(ctx context.Context, cmd string, args []string) error {
 	if dsn == "" {
 		return errors.New("DATABASE_URL is not set (see .env.example)")
 	}
+	if cmd == "drop-mock" {
+		return store.DropMockDatabase(ctx, dsn)
+	}
 	if cmd == "migrate" {
+		created, err := store.EnsureDatabase(ctx, dsn)
+		if err != nil {
+			return err
+		}
+		if created {
+			slog.Info("database created")
+		}
 		if err := store.Migrate(dsn); err != nil {
 			return err
 		}

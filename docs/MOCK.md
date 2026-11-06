@@ -11,9 +11,9 @@ Dokud nejsou klíče k API-HOCKEY a OddsPapi, celá cesta ingest → backtest �
 ## Jak spustit
 
 ```sh
-make db
 make mock-run   # DB bestbet_mock: migrate, leagues, games, oddspapi (60 dní), odds, snapshot, report → data/DATA_MOCK.md
-DATABASE_URL=postgres://bestbet:bestbet@127.0.0.1:5455/bestbet_mock?sslmode=disable \
+set -a && . ./.env && set +a
+DATABASE_URL="$MOCK_DATABASE_URL" \
   ./bin/backtest -from 2024 -holdout 2026 -gate -sharp mock-sharp -books mock-cz1,mock-cz2
 ```
 

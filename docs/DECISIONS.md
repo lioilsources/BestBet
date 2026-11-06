@@ -40,3 +40,4 @@ Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a 
 - **Trh v backtestu:** poslední cena každé knihy před začátkem, medián přes knihy, devig Shin. Pinnacle pro Allsvenskan zatím nemáme; „medián knih“ odpovídá 00 §1.4.6 pro okrajové ligy.
 - **Kalibrace (PAVA, Platt) je implementovaná, ale baseline ji nepoužívá.** Kalibrační vrstva přijde s fází 3, fitovaná na ladicí sezoně, nikdy na odložené.
 - **Numerika:** gonum (L-BFGS) pro fit; vlastní kód jen pro PAVA, Shin a δ (01 §6).
+- **Postgres na JODĚ, ne na Macu.** Na M2 neběží Docker (málo paměti). Compose v `deploy/joda`, Mac se připojuje po LAN, URL a heslo v `.env`. Stará lokální DB se nepřenášela; data se znovu nahrála z HTTP cache (`docs/DEPLOY.md`).
