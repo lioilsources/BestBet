@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/lioilsources/BetWave/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/hockey"
 )
 
 // ScheduleGame is one row of /ScheduleAndResults/Schedule/{id}.

@@ -3,9 +3,9 @@ services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: betwave
-      POSTGRES_PASSWORD: betwave
-      POSTGRES_DB: betwave
+      POSTGRES_USER: bestbet
+      POSTGRES_PASSWORD: bestbet
+      POSTGRES_DB: bestbet
     ports:
       - "127.0.0.1:5455:5432"
     volumes:

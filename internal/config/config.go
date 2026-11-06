@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/lioilsources/BetWave/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/hockey"
 )
 
 // File is the whole config.

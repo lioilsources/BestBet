@@ -25,16 +25,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lioilsources/BetWave/internal/config"
-	"github.com/lioilsources/BetWave/internal/db/dbq"
-	"github.com/lioilsources/BetWave/internal/httpcache"
-	"github.com/lioilsources/BetWave/internal/ingest"
-	"github.com/lioilsources/BetWave/internal/oddspapi"
-	"github.com/lioilsources/BetWave/internal/report"
-	"github.com/lioilsources/BetWave/internal/store"
+	"github.com/lioilsources/BestBet/internal/config"
+	"github.com/lioilsources/BestBet/internal/db/dbq"
+	"github.com/lioilsources/BestBet/internal/httpcache"
+	"github.com/lioilsources/BestBet/internal/ingest"
+	"github.com/lioilsources/BestBet/internal/oddspapi"
+	"github.com/lioilsources/BestBet/internal/report"
+	"github.com/lioilsources/BestBet/internal/store"
 )
 
-const userAgent = "BetWave-M0/0.1 (research; low rate)"
+const userAgent = "BestBet-M0/0.1 (research; low rate)"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))

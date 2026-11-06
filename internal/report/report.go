@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lioilsources/BetWave/internal/db/dbq"
+	"github.com/lioilsources/BestBet/internal/db/dbq"
 )
 
 // Data is everything the report shows; filled by Load, rendered by Render.

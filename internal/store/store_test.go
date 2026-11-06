@@ -10,8 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/lioilsources/BetWave/internal/config"
-	"github.com/lioilsources/BetWave/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/config"
+	"github.com/lioilsources/BestBet/internal/hockey"
 )
 
 // testStore creates a throw-away database on the server in TEST_DATABASE_URL
@@ -27,7 +27,7 @@ func testStore(t *testing.T) *Store {
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := fmt.Sprintf("betwave_test_%d", os.Getpid())
+	name := fmt.Sprintf("bestbet_test_%d", os.Getpid())
 	if _, err := admin.Exec(ctx, "DROP DATABASE IF EXISTS "+name); err != nil {
 		t.Fatal(err)
 	}

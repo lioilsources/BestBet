@@ -2,7 +2,7 @@
 # Store integration tests run with `make test-db` (needs `make db`).
 .PHONY: check fmt build db test-db
 
-TEST_DATABASE_URL ?= postgres://betwave:betwave@127.0.0.1:5455/postgres?sslmode=disable
+TEST_DATABASE_URL ?= postgres://bestbet:bestbet@127.0.0.1:5455/postgres?sslmode=disable
 
 check:
 	@out=$$(gofmt -l cmd internal); if [ -n "$$out" ]; then echo "gofmt needed: $$out"; exit 1; fi

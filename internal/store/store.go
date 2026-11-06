@@ -17,11 +17,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/lioilsources/BetWave/internal/config"
-	"github.com/lioilsources/BetWave/internal/db"
-	"github.com/lioilsources/BetWave/internal/db/dbq"
-	"github.com/lioilsources/BetWave/internal/hockey"
-	"github.com/lioilsources/BetWave/internal/teammatch"
+	"github.com/lioilsources/BestBet/internal/config"
+	"github.com/lioilsources/BestBet/internal/db"
+	"github.com/lioilsources/BestBet/internal/db/dbq"
+	"github.com/lioilsources/BestBet/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/teammatch"
 )
 
 // Store is the DB handle.

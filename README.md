@@ -1,4 +1,4 @@
-# BetWave („Vlna“)
+# BestBet („Vlna“)
 
 Výzkumný projekt: model pravděpodobností hokejových zápasů (vlna týmu + brankář) a test, jestli má proti trhu edge na okrajových ligách. Appka **nepřijímá sázky**. Plán a právní rámec: [Prompts/00-VLNA_PLAN.md](Prompts/00-VLNA_PLAN.md).
 

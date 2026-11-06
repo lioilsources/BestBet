@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/lioilsources/BetWave/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/hockey"
 )
 
 // Club-form tokens that carry no identity ("IK", "HC", "Hockey" ...).

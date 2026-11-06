@@ -10,12 +10,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/lioilsources/BetWave/internal/apihockey"
-	"github.com/lioilsources/BetWave/internal/config"
-	"github.com/lioilsources/BetWave/internal/db/dbq"
-	"github.com/lioilsources/BetWave/internal/httpcache"
-	"github.com/lioilsources/BetWave/internal/odds"
-	"github.com/lioilsources/BetWave/internal/store"
+	"github.com/lioilsources/BestBet/internal/apihockey"
+	"github.com/lioilsources/BestBet/internal/config"
+	"github.com/lioilsources/BestBet/internal/db/dbq"
+	"github.com/lioilsources/BestBet/internal/httpcache"
+	"github.com/lioilsources/BestBet/internal/odds"
+	"github.com/lioilsources/BestBet/internal/store"
 )
 
 func selectLeagues(cfg config.File, slug string) ([]config.League, error) {

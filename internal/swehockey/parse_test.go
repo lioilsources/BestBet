@@ -3,7 +3,7 @@ package swehockey
 import (
 	"os"
 
-	"github.com/lioilsources/BetWave/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/hockey"
 
 	"testing"
 	"time"

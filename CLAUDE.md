@@ -1,4 +1,4 @@
-# BetWave
+# BestBet
 
 <!-- Max 80 řádků. Co se nevejde, jde do docs/ a sem jeden odkaz. Veřejné repo: žádné LAN IP, domovské cesty, ID. -->
 

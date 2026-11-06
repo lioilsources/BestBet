@@ -12,16 +12,16 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/lioilsources/BetWave/internal/apihockey"
-	"github.com/lioilsources/BetWave/internal/config"
-	"github.com/lioilsources/BetWave/internal/db/dbq"
-	"github.com/lioilsources/BetWave/internal/hockey"
-	"github.com/lioilsources/BetWave/internal/httpcache"
-	"github.com/lioilsources/BetWave/internal/odds"
-	"github.com/lioilsources/BetWave/internal/oddspapi"
-	"github.com/lioilsources/BetWave/internal/store"
-	"github.com/lioilsources/BetWave/internal/swehockey"
-	"github.com/lioilsources/BetWave/internal/teammatch"
+	"github.com/lioilsources/BestBet/internal/apihockey"
+	"github.com/lioilsources/BestBet/internal/config"
+	"github.com/lioilsources/BestBet/internal/db/dbq"
+	"github.com/lioilsources/BestBet/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/httpcache"
+	"github.com/lioilsources/BestBet/internal/odds"
+	"github.com/lioilsources/BestBet/internal/oddspapi"
+	"github.com/lioilsources/BestBet/internal/store"
+	"github.com/lioilsources/BestBet/internal/swehockey"
+	"github.com/lioilsources/BestBet/internal/teammatch"
 )
 
 // Env is what every ingest step needs.

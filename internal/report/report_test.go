@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lioilsources/BetWave/internal/db/dbq"
+	"github.com/lioilsources/BestBet/internal/db/dbq"
 )
 
 func TestRenderRanksFringeLeagues(t *testing.T) {

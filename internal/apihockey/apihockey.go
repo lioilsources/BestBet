@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lioilsources/BetWave/internal/hockey"
-	"github.com/lioilsources/BetWave/internal/httpcache"
+	"github.com/lioilsources/BestBet/internal/hockey"
+	"github.com/lioilsources/BestBet/internal/httpcache"
 )
 
 // DefaultBase is the public endpoint.
