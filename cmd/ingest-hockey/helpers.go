@@ -90,7 +90,7 @@ func oddsPapi(cacheDir string) (*oddspapi.Client, error) {
 	if key == "" {
 		return nil, errors.New("ODDSPAPI_KEY is not set")
 	}
-	return &oddspapi.Client{Base: oddspapi.DefaultBase, Key: key, HTTP: &httpcache.Client{Dir: cacheDir + "/oddspapi", MinGap: 5 * time.Second, UserAgent: userAgent}}, nil
+	return &oddspapi.Client{Base: oddspapi.DefaultBase, Key: key, HTTP: &httpcache.Client{Dir: cacheDir + "/oddspapi", MinGap: 6 * time.Second, UserAgent: userAgent}}, nil
 }
 
 // refresh re-reads a league row: `leagues` may have just stored its API ids.

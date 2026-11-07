@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,11 +46,11 @@ func (c *Client) get(ctx context.Context, path string, q url.Values, ttl time.Du
 	req := httpcache.Request{URL: c.Base + path + "?" + q2.Encode(), Key: key, TTL: ttl}
 	body, cached, err := c.HTTP.Get(ctx, req)
 	if err != nil && strings.Contains(err.Error(), "http 429") {
-		// Per-endpoint cooldown; one retry after a short wait is enough.
+		// Cooldown ("Please wait 3.95 seconds"); one retry after it.
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(3 * time.Second):
+		case <-time.After(retryAfter(err.Error())):
 		}
 		body, cached, err = c.HTTP.Get(ctx, req)
 	}
@@ -299,4 +300,17 @@ func pickString(m map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+var waitRE = regexp.MustCompile(`wait ([0-9.]+) seconds`)
+
+// retryAfter reads the cooldown from a 429 body, plus a second of slack.
+func retryAfter(msg string) time.Duration {
+	d := 5 * time.Second
+	if m := waitRE.FindStringSubmatch(msg); m != nil {
+		if v, err := strconv.ParseFloat(m[1], 64); err == nil {
+			d = time.Duration(v*float64(time.Second)) + time.Second
+		}
+	}
+	return d
 }

@@ -393,6 +393,10 @@ func OddsPapi(ctx context.Context, e Env, c *oddspapi.Client, l config.League, r
 		return st, err
 	}
 	for _, f := range fixtures {
+		// The fixtures endpoint also returns older rescheduled games; stay in range.
+		if !f.StartTime.IsZero() && (f.StartTime.Before(from) || f.StartTime.After(to.Add(24*time.Hour))) {
+			continue
+		}
 		st.Seen++
 		gameID, detail, err := linkByTeams(ctx, e.Store, teams, row.ID, f.Home, f.Away, f.StartTime)
 		if err != nil {
