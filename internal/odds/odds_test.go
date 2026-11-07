@@ -28,6 +28,12 @@ func TestNormalizeAPIHockey(t *testing.T) {
 		{"Over/Under 2nd Period", "Over 1.5", Other, "Over 1.5", nil},
 		{"Highest Scoring Period", "1st Period", Other, "1st Period", nil},
 		{"3Way Result", "Nobody", Other, "Nobody", nil},
+		// OddsPapi names.
+		{"Regular Time Result fulltime", "Home", OneX2, "home", nil},
+		{"First Period Result", "Draw", P1OneX2, "draw", nil},
+		{"Winner (incl. overtime and penalties) result", "Away", ML, "away", nil},
+		{"Total (incl. overtime and penalties)", "Over 5.5", Other, "Over 5.5", nil},
+		{"Correct Score (incl. overtime and penalties)", "3:2", Other, "3:2", nil},
 	}
 	for _, c := range cases {
 		q := NormalizeAPIHockey(c.bet, c.val, 2)

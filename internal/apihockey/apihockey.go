@@ -107,10 +107,15 @@ type League struct {
 	} `json:"seasons"`
 }
 
-// Leagues searches leagues by name fragment (cached for a week).
+// Leagues searches leagues by name fragment; an empty search lists every
+// league in one request. Cached for a week.
 func (c *Client) Leagues(ctx context.Context, search string) ([]League, error) {
 	var out []League
-	_, err := c.get(ctx, "/leagues", url.Values{"search": {search}}, 7*24*time.Hour, &out)
+	q := url.Values{}
+	if search != "" {
+		q.Set("search", search)
+	}
+	_, err := c.get(ctx, "/leagues", q, 7*24*time.Hour, &out)
 	return out, err
 }
 

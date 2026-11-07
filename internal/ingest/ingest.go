@@ -44,17 +44,21 @@ func (s Stats) String() string {
 	return fmt.Sprintf("seen=%d new=%d linked=%d failed=%d goalies=%d quotes=%d", s.Seen, s.New, s.Linked, s.Failed, s.Goalies, s.Quotes)
 }
 
-// ResolveAPIHockeyLeague searches API-HOCKEY for a configured league and returns
-// candidates; exactly one exact name+country match is returned as best.
+// ResolveAPIHockeyLeague finds a configured league in the full API-HOCKEY
+// league list (one cached request for all leagues; the search parameter
+// rejects names like "1. Liga"). It returns the leagues of the configured
+// country as candidates; exactly one name match (search or alt) is best.
 func ResolveAPIHockeyLeague(ctx context.Context, c *apihockey.Client, l config.League) (*apihockey.League, []apihockey.League, error) {
 	names := append([]string{l.APIHockey.Search}, l.APIHockey.Alt...)
+	list, err := c.Leagues(ctx, "")
+	if err != nil {
+		return nil, nil, err
+	}
 	var all []apihockey.League
-	for _, n := range names {
-		got, err := c.Leagues(ctx, n)
-		if err != nil {
-			return nil, nil, err
+	for _, c := range list {
+		if strings.EqualFold(teammatch.Norm(c.Country.Name), teammatch.Norm(l.APIHockey.Country)) {
+			all = append(all, c)
 		}
-		all = append(all, got...)
 	}
 	var best []apihockey.League
 	for _, c := range all {
@@ -209,18 +213,38 @@ func APIHockeyOdds(ctx context.Context, e Env, c *apihockey.Client, l config.Lea
 	return st, nil
 }
 
-func insertQuote(ctx context.Context, s *store.Store, gameID int64, source, fixtureID, book string, q odds.Quote, kind string, at time.Time) error {
+func quoteParams(gameID int64, source, fixtureID, book string, q odds.Quote, kind string, at time.Time) dbq.InsertOddsParams {
 	var gid *int64
 	if gameID != 0 {
 		gid = &gameID
 	}
-	err := s.Q.InsertOdds(ctx, dbq.InsertOddsParams{
+	return dbq.InsertOddsParams{
 		GameID: gid, Source: source, SourceFixtureID: fixtureID, Book: strings.ToLower(book),
 		Market: q.Market, Selection: q.Selection, Line: q.Line, Price: q.Price,
 		RawMarket: q.RawMarket, SnapshotKind: kind, CapturedAt: pgTime(at),
-	})
-	if err != nil {
+	}
+}
+
+func insertQuote(ctx context.Context, s *store.Store, gameID int64, source, fixtureID, book string, q odds.Quote, kind string, at time.Time) error {
+	if err := s.Q.InsertOdds(ctx, quoteParams(gameID, source, fixtureID, book, q, kind, at)); err != nil {
 		return fmt.Errorf("insert odds: %w", err)
+	}
+	return nil
+}
+
+// insertQuotes sends a fixture's odds history as one batch.
+func insertQuotes(ctx context.Context, s *store.Store, rows []dbq.InsertOddsBatchParams) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	var first error
+	s.Q.InsertOddsBatch(ctx, rows).Exec(func(_ int, err error) {
+		if err != nil && first == nil {
+			first = err
+		}
+	})
+	if first != nil {
+		return fmt.Errorf("insert odds batch: %w", first)
 	}
 	return nil
 }
@@ -393,21 +417,35 @@ func OddsPapi(ctx context.Context, e Env, c *oddspapi.Client, l config.League, r
 			slog.Warn("historical odds", "fixture", f.FixtureID, "err", err)
 			continue
 		}
-		for _, p := range pts {
+		// Only modelled markets, thinned to opening/t24h/t1h/closing per
+		// selection (odds.Thin); the full history stays in the HTTP cache.
+		qs := make([]odds.Quote, len(pts))
+		var keep []odds.Point
+		for i, p := range pts {
 			def, ok := markets[p.MarketID]
 			if !ok {
 				def = oddspapi.MarketDef{Name: "market " + p.MarketID}
 			}
-			q := oddspapi.Normalize(def, p.OutcomeID, p.Price)
-			kind := "historical"
-			if !f.StartTime.IsZero() && odds.SnapshotKind(p.CreatedAt, f.StartTime) == "closing" {
-				kind = "closing"
+			qs[i] = oddspapi.Normalize(def, p.OutcomeID, p.Price)
+			if qs[i].Market == odds.Other {
+				continue
 			}
-			if err := insertQuote(ctx, e.Store, gameID, "oddspapi", f.FixtureID, p.Book, q, kind, p.CreatedAt); err != nil {
-				return st, err
+			line := ""
+			if qs[i].Line != nil {
+				line = strconv.FormatFloat(*qs[i].Line, 'f', -1, 64)
 			}
-			st.Quotes++
+			keep = append(keep, odds.Point{Key: p.Book + "|" + qs[i].Market + "|" + qs[i].Selection + "|" + line, At: p.CreatedAt, I: i})
 		}
+		kinds := odds.Thin(keep, f.StartTime)
+		rows := make([]dbq.InsertOddsBatchParams, 0, len(kinds))
+		for i, kind := range kinds {
+			p := pts[i]
+			rows = append(rows, dbq.InsertOddsBatchParams(quoteParams(gameID, "oddspapi", f.FixtureID, p.Book, qs[i], kind, p.CreatedAt)))
+		}
+		if err := insertQuotes(ctx, e.Store, rows); err != nil {
+			return st, err
+		}
+		st.Quotes += len(rows)
 	}
 	slog.Info("oddspapi", "league", l.Slug, "stats", st.String())
 	return st, nil

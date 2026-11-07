@@ -45,14 +45,22 @@ func NormalizeAPIHockey(betName, value string, price float64) Quote {
 	if otherPeriod || strings.Contains(b, "home") && strings.Contains(b, "total") || strings.Contains(b, "away") && strings.Contains(b, "total") {
 		return q // team totals and later periods: keep raw
 	}
+	// OddsPapi names markets settled with overtime "... (incl. overtime and
+	// penalties)": only the winner is our moneyline; totals, spreads and scores
+	// with overtime are not the 60-minute markets the model prices.
+	inclOT := strings.Contains(b, "incl. overtime") || strings.Contains(b, "including overtime")
+	if inclOT && !strings.HasPrefix(b, "winner") {
+		return q
+	}
 	switch {
-	case strings.Contains(b, "3way") || strings.Contains(b, "3 way") || b == "match winner" || b == "1x2":
+	case strings.Contains(b, "3way") || strings.Contains(b, "3 way") || b == "match winner" || b == "1x2" ||
+		strings.HasPrefix(b, "regular time result") || strings.HasPrefix(b, "first period result"):
 		q.Market = OneX2
 		if firstPeriod {
 			q.Market = P1OneX2
 		}
 		q.Selection = side(value)
-	case b == "home/away" || strings.Contains(b, "money") || strings.Contains(b, "incl. ot") || strings.Contains(b, "including ot"):
+	case b == "home/away" || strings.Contains(b, "money") || strings.Contains(b, "incl. ot") || strings.Contains(b, "including ot") || inclOT:
 		if firstPeriod {
 			return q
 		}

@@ -1,6 +1,7 @@
 # BestBet database on JODA (~/deploy/BestBet). No Docker on the dev Mac: the Mac
 # (ingest, backtest, tests, mock runs) connects over the LAN; see docs/DEPLOY.md.
-# .env next to this file: POSTGRES_PASSWORD, DB_BIND (JODA's LAN address).
+# .env next to this file: POSTGRES_PASSWORD, DB_BIND (JODA's LAN address),
+# PGDATA_DIR (the ZFS dataset pool/bestbet/db, recordsize 16k; see docs/DEPLOY.md).
 name: bestbet
 
 services:
@@ -17,7 +18,7 @@ services:
     ports:
       - "${DB_BIND:-127.0.0.1}:5455:5432"
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - ${PGDATA_DIR:-./pgdata}:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bestbet -d bestbet"]
       interval: 5s

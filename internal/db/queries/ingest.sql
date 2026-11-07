@@ -137,6 +137,15 @@ INSERT INTO odds_snapshots (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 ON CONFLICT DO NOTHING;
 
+-- InsertOddsBatch is InsertOdds for whole odds histories: one round trip per
+-- fixture instead of one per price point (the DB sits on JODA, over the LAN).
+-- name: InsertOddsBatch :batchexec
+INSERT INTO odds_snapshots (
+    game_id, source, source_fixture_id, book, market, selection, line, price,
+    raw_market, snapshot_kind, captured_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+ON CONFLICT DO NOTHING;
+
 -- name: UpsertFixtureLink :exec
 INSERT INTO fixture_links (source, source_fixture_id, league_id, game_id, match_method, detail)
 VALUES ($1, $2, $3, $4, $5, $6)

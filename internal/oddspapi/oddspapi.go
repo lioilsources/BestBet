@@ -42,7 +42,17 @@ func (c *Client) get(ctx context.Context, path string, q url.Values, ttl time.Du
 		q2[k] = v
 	}
 	q2.Set("apiKey", c.Key)
-	body, cached, err := c.HTTP.Get(ctx, httpcache.Request{URL: c.Base + path + "?" + q2.Encode(), Key: key, TTL: ttl})
+	req := httpcache.Request{URL: c.Base + path + "?" + q2.Encode(), Key: key, TTL: ttl}
+	body, cached, err := c.HTTP.Get(ctx, req)
+	if err != nil && strings.Contains(err.Error(), "http 429") {
+		// Per-endpoint cooldown; one retry after a short wait is enough.
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(3 * time.Second):
+		}
+		body, cached, err = c.HTTP.Get(ctx, req)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("oddspapi %s: %w", path, err)
 	}
@@ -260,7 +270,7 @@ func Normalize(def MarketDef, outcomeID string, price float64) odds.Quote {
 	case "2":
 		val = "Away"
 	}
-	if def.Handicap != nil {
+	if def.Handicap != nil && *def.Handicap != 0 { // 0 = no line (1X2, winner)
 		val = fmt.Sprintf("%s %s", val, strconv.FormatFloat(*def.Handicap, 'f', -1, 64))
 		if strings.HasPrefix(strings.ToLower(val), "home") || strings.HasPrefix(strings.ToLower(val), "away") {
 			if *def.Handicap > 0 {
