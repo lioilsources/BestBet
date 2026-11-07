@@ -45,6 +45,7 @@ func run() error {
 	tune := flag.Int("tune", 2024, "calib: tuning season (never a held-out one)")
 	gate := flag.Bool("gate", false, "simulate 1X2 bets (01 §2.3) and render brána G1 (01 fáze 3)")
 	sharp := flag.String("sharp", "pinnacle", "gate: reference book for the close")
+	ablNote := flag.String("gate-ablation", "žádná vrstva nezlepšila (`docs/RESULTS_PHASE2.md`)", "gate: ablation result for this league (text)")
 	books := flag.String("books", "tipsport,fortuna,chance,betano", "gate: books we may bet at (CZ licensed)")
 	flag.Parse()
 
@@ -129,7 +130,7 @@ func run() error {
 		md += "\n## Kalibrace po trzích (01 fáze 3)\n\n" + backtest.RenderCalibration(rows, *tune, *holdout)
 	}
 	if *gate {
-		md += gateSection(rows, odds, *holdout, *sharp, strings.Split(*books, ","))
+		md += gateSection(rows, odds, *holdout, *sharp, strings.Split(*books, ","), *ablNote)
 	}
 	if *out == "" {
 		fmt.Print(md)
@@ -235,7 +236,7 @@ func ablation(matches []canon.Match, odds map[int64][]canon.OddsQuote, cfg perio
 }
 
 // gateSection simulates the staking policy on the baseline and renders G1.
-func gateSection(rows []backtest.Row, odds map[int64][]canon.OddsQuote, holdout int, sharp string, books []string) string {
+func gateSection(rows []backtest.Row, odds map[int64][]canon.OddsQuote, holdout int, sharp string, books []string, ablNote string) string {
 	cfg := backtest.DefaultBetConfig()
 	cfg.Sharp, cfg.Books = sharp, books
 	bets := backtest.SimulateBets(rows, odds, cfg)
@@ -281,7 +282,7 @@ func gateSection(rows []backtest.Row, odds map[int64][]canon.OddsQuote, holdout 
 	}
 	b.WriteString("\n## Brána G1 (01 fáze 3)\n\n")
 	b.WriteString(backtest.RenderGate(backtest.GateInput{Rows: rows, Bets: bets, Holdout: holdout, Sharp: sharp, Odds: odds,
-		Ablation: "žádná vrstva nezlepšila (`docs/RESULTS_PHASE2.md`)", AblationOK: false}))
+		Ablation: ablNote, AblationOK: false}))
 	return b.String()
 }
 
