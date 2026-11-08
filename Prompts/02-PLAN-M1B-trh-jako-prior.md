@@ -55,14 +55,32 @@ efektem (00 §0 bod 5) a jediná s měřitelným časem příchodu informace.
 | Kombinace 1/5/10 (§1.4.4) | nemá smysl bez hrany na noze | až po G1b |
 | Prior = trh (§3.2) | **neimplementováno** | F1 |
 
-## 1. Rozhodnutí vlastníka (před startem)
+## 1. Rozhodnutí vlastníka (2026-11-08, rozhodnuto)
 
-| Otázka | Výchozí návrh |
+| Otázka | Rozhodnutí |
 |---|---|
-| Směr | **A:** tento plán (trh jako prior + okno brankáře). Alternativy v §7. |
-| Rozpočet | 0 Kč. Free tier OddsPapi a API-HOCKEY, veřejné NHL API. Placený tier až s výsledkem F1 a výslovným souhlasem. |
-| Zdroj ohlášených brankářů NHL | Veřejné NHL API (`gamecenter/<id>/landing`, pokud nese startující brankáře) jako první volba; DailyFaceoff jen jako záloha a jen pro interní výzkum s cache (ToS šedá zóna, 00 §7 ř. 8). Vlastník potvrdí. |
+| Směr | **A:** tento plán. Alternativy v §7 jen pro záznam. |
+| Rozpočet | **0 Kč.** Free tier OddsPapi a API-HOCKEY, veřejné NHL API. Placený tier přijde na stůl až s kladným výsledkem F1, a jen s výslovným souhlasem. |
+| Zdroj ohlášených brankářů NHL | **Jen veřejné NHL API** (`api-web.nhle.com`). DailyFaceoff ani jiný scraping ne. Když NHL API startující brankáře před zápasem nenese, F2 to zjistí první a plán se zastaví u vlastníka. |
 | Časový rámec | F1 tři až čtyři dny práce. F2 tři dny práce a **4–6 týdnů běhu** bez zásahu. F3 dva dny. |
+
+## 1b. Jak začít (pro Opus, nová session)
+
+1. Přečíst v tomto pořadí: `CLAUDE.md`, tento plán, `docs/DECISIONS.md`
+   (celý), `docs/RESULTS_G1_NHL.md`, `docs/RESULTS_NHL.md`. Z 00 jen §1.4,
+   §3 a §7. Z kódu `internal/model/layers/layers.go`, `internal/backtest`,
+   `cmd/backtest/main.go`, `internal/odds`, `internal/devig`.
+2. Větev `feat/m1b-market-prior` z `main` až po merge PR #1; dokud PR #1
+   není mergnutý, větev z `feat/model-phase0-1`. Jeden PR pro F1.
+3. Před prvním během backtestu zapsat do DECISIONS konfiguraci nových
+   vrstev (`rest-days`, `pressure`, `coach-change`) a prahy brány A1.
+   Potom se nemění.
+4. DB je na JODĚ (`docs/DEPLOY.md`), `.env` na M2 má `DATABASE_URL`.
+   Kurzy jsou v `odds_snapshots` (opening, t24h, t1h, closing). Plná
+   historie cen je v HTTP cache `data/cache`, kdyby bylo potřeba jiné časy.
+5. Dlouhé běhy přes `nohup` + `disown` s logem v `data/log/`.
+6. Po F1 nehlásit „hotovo“, ale tabulku: vrstva × (Δ log-loss proti trhu,
+   interval, korelace s pohybem, CLV v open) a verdikt A1.
 
 ## 2. Hypotézy (falzifikovatelné)
 

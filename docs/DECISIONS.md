@@ -2,6 +2,14 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-08 (po G1: směr M1b)
+
+- **Směr po neúspěšné G1: A, plán `Prompts/02-PLAN-M1B-trh-jako-prior.md`.** Trh jako prior (00 §3.2, dosud neimplementované) a test všech předpokladů z 00 proti trhu, ne proti vlastní baseline. Dosavadní ablace vrstev měřily jen „ví vrstva něco navíc proti baseline“; hypotéza §1.4.2 „bookmaker je pomalejší než Kalman“ se měří jen proti kurzům a dosud se neměřila.
+- **Rozpočet 0 Kč**, free tiery; placený tier až s kladným F1 a souhlasem.
+- **Brankáři NHL jen z veřejného NHL API**, žádný scraping (DailyFaceoff vyloučen).
+- **Appka (M3) zůstává no-go**, dokud neprojde brána G1b z plánu 02.
+- Databáze přesunuta na ZFS `pool/bestbet/db` za běhu přes `pg_basebackup` (`docs/DEPLOY.md`). Cron na JODĚ: swehockey, nhl, predict; `games` a `snapshot` čekají na klíče.
+
 ## 2026-11-06 (fáze 3, sázky a G1)
 
 - **Sázková politika podle 01 §2.3, pevná:** jen 1X2, nejvýš jedna sázka na zápas (výběr s největší hranou), hrana = p_model − p_implied knihy po Shinovi ≥ 3 p. b. a zároveň EV > 0, kurz ≤ 10. Kelly 1/4 z bankrollu na začátku dne, strop 2 %, nejvýš 5 sázek denně. Kurz se bere poslední nejméně 1 h před začátkem.
