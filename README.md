@@ -6,11 +6,10 @@ Teď běží **M0, validace dat**: sběr zápasů, brankářů a kurzů do Postg
 
 ## Rychlý start
 
-Potřeba: Go 1.26, Docker, sqlc (jen při změně SQL).
+Potřeba: Go 1.26, sqlc (jen při změně SQL) a Postgres na JODĚ ([docs/DEPLOY.md](docs/DEPLOY.md)); Docker na Macu není potřeba.
 
 ```
-make db
-cp .env.example .env        # doplň klíče API-HOCKEY a OddsPapi
+cp .env.example .env        # URL databáze na JODĚ, klíče API-HOCKEY a OddsPapi
 set -a && . ./.env && set +a
 go run ./cmd/ingest-hockey migrate
 go run ./cmd/ingest-hockey swehockey -league swe-allsvenskan -season 2025 -goalies=false

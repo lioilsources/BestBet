@@ -11,8 +11,8 @@ leagues:
     role: fringe
     tz: Europe/Stockholm
     ot: {regular: 3v3_5, playoff: 5v5_20}
-    apihockey: {search: HockeyAllsvenskan, country: Sweden}
-    oddspapi: {search: Allsvenskan, category: Sweden}
+    apihockey: {id: 49, search: HockeyAllsvenskan, country: Sweden}
+    oddspapi: {tournament_id: 416, search: Allsvenskan, category: Sweden}
     swehockey:
       - {season: 2023, schedule_id: 14678, stage: Regular Season}
       - {season: 2023, schedule_id: 15784, stage: Slutspel}
@@ -32,8 +32,8 @@ leagues:
     role: fringe
     tz: Europe/Prague
     ot: {regular: 3v3_5, playoff: 5v5_20}
-    apihockey: {search: "1. Liga", country: Czech-Republic, alt: ["Chance Liga", "Maxa Liga"]}
-    oddspapi: {search: "1. Liga", category: Czech}
+    apihockey: {id: 11, search: "1. Liga", country: Czech-Republic, alt: ["Chance Liga", "Maxa Liga"]}
+    oddspapi: {tournament_id: 735, search: "1. Liga", category: Czech}
 
   - slug: svk-extraliga
     name: Tipos extraliga
@@ -41,8 +41,8 @@ leagues:
     role: fringe
     tz: Europe/Bratislava
     ot: {regular: 3v3_5, playoff: 5v5_20}
-    apihockey: {search: Extraliga, country: Slovakia}
-    oddspapi: {search: Extraliga, category: Slovakia}
+    apihockey: {id: 91, search: Extraliga, country: Slovakia}
+    oddspapi: {tournament_id: 236, search: Extraliga, category: Slovakia}
 
   - slug: ger-del2
     name: DEL2
@@ -50,8 +50,8 @@ leagues:
     role: fringe
     tz: Europe/Berlin
     ot: {regular: 3v3_5, playoff: 5v5_20}
-    apihockey: {search: DEL2, country: Germany}
-    oddspapi: {search: DEL 2, category: Germany}
+    apihockey: {id: 20, search: DEL2, country: Germany}
+    oddspapi: {tournament_id: 267, search: DEL 2, category: Germany}
 
   - slug: cze-extraliga
     name: Extraliga
@@ -59,8 +59,8 @@ leagues:
     role: semi_efficient
     tz: Europe/Prague
     ot: {regular: 3v3_5, playoff: 5v5_20}
-    apihockey: {search: Extraliga, country: Czech-Republic}
-    oddspapi: {search: Extraliga, category: Czech}
+    apihockey: {id: 10, search: Extraliga, country: Czech-Republic}
+    oddspapi: {tournament_id: 237, search: Extraliga, category: Czech}
 
   - slug: swe-shl
     name: SHL
@@ -68,8 +68,8 @@ leagues:
     role: semi_efficient
     tz: Europe/Stockholm
     ot: {regular: 3v3_5, playoff: 5v5_20}
-    apihockey: {search: SHL, country: Sweden}
-    oddspapi: {search: SHL, category: Sweden}
+    apihockey: {id: 47, search: SHL, country: Sweden}
+    oddspapi: {tournament_id: 261, search: SHL, category: Sweden}
 
   - slug: nhl
     name: NHL
@@ -78,8 +78,14 @@ leagues:
     tz: America/New_York
     # NHL play-off OT is 5v5 20-minute periods; the shootout exists only in the regular season.
     ot: {regular: 3v3_5, playoff: 5v5_20}
-    apihockey: {search: NHL, country: USA}
-    oddspapi: {search: NHL, category: USA}
+    # Phase 2 ablation on the NHL (docs/RESULTS_NHL.md): goalie and b2b pass.
+    layers: [goalie, b2b]
+    apihockey: {id: 57, search: NHL, country: USA}
+    oddspapi: {tournament_id: 234, search: NHL, category: USA}
 
 # Manual spellings that fuzzy matching cannot resolve: source -> league -> alias -> canonical name.
-aliases: {}
+aliases:
+  nhl:
+    nhl:
+      # Utah renamed its team for 2025/26; same franchise, one team row.
+      Mammoth: Utah Hockey Club

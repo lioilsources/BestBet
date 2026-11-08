@@ -1,0 +1,8 @@
+# BestBet cron on JODA (docs/DEPLOY.md). BESTBET=/home/<user>/deploy/BestBet; secrets in its .env.
+# games and snapshot need the API-HOCKEY key; until then install only the keyless lines.
+# m   h   dom mon dow  command
+0     6   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey games    >> data/log/games.log 2>&1
+10    6   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey swehockey -league swe-allsvenskan -season 2026 >> data/log/swehockey.log 2>&1
+30    8   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey nhl -season 2026 >> data/log/nhl.log 2>&1
+*/15  *   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey snapshot >> data/log/snapshot.log 2>&1
+20    *   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/predict               >> data/log/predict.log 2>&1

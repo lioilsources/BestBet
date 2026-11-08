@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,7 +43,17 @@ func (c *Client) get(ctx context.Context, path string, q url.Values, ttl time.Du
 		q2[k] = v
 	}
 	q2.Set("apiKey", c.Key)
-	body, cached, err := c.HTTP.Get(ctx, httpcache.Request{URL: c.Base + path + "?" + q2.Encode(), Key: key, TTL: ttl})
+	req := httpcache.Request{URL: c.Base + path + "?" + q2.Encode(), Key: key, TTL: ttl}
+	body, cached, err := c.HTTP.Get(ctx, req)
+	if err != nil && strings.Contains(err.Error(), "http 429") {
+		// Cooldown ("Please wait 3.95 seconds"); one retry after it.
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(retryAfter(err.Error())):
+		}
+		body, cached, err = c.HTTP.Get(ctx, req)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("oddspapi %s: %w", path, err)
 	}
@@ -260,7 +271,7 @@ func Normalize(def MarketDef, outcomeID string, price float64) odds.Quote {
 	case "2":
 		val = "Away"
 	}
-	if def.Handicap != nil {
+	if def.Handicap != nil && *def.Handicap != 0 { // 0 = no line (1X2, winner)
 		val = fmt.Sprintf("%s %s", val, strconv.FormatFloat(*def.Handicap, 'f', -1, 64))
 		if strings.HasPrefix(strings.ToLower(val), "home") || strings.HasPrefix(strings.ToLower(val), "away") {
 			if *def.Handicap > 0 {
@@ -289,4 +300,17 @@ func pickString(m map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+var waitRE = regexp.MustCompile(`wait ([0-9.]+) seconds`)
+
+// retryAfter reads the cooldown from a 429 body, plus a second of slack.
+func retryAfter(msg string) time.Duration {
+	d := 5 * time.Second
+	if m := waitRE.FindStringSubmatch(msg); m != nil {
+		if v, err := strconv.ParseFloat(m[1], 64); err == nil {
+			d = time.Duration(v*float64(time.Second)) + time.Second
+		}
+	}
+	return d
 }

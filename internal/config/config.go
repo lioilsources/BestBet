@@ -21,12 +21,15 @@ type File struct {
 
 // League is one competition.
 type League struct {
-	Slug      string          `yaml:"slug"`
-	Name      string          `yaml:"name"`
-	Country   string          `yaml:"country"`
-	Role      string          `yaml:"role"`
-	TZ        string          `yaml:"tz"`
-	OT        hockey.OTFormat `yaml:"ot"`
+	Slug    string          `yaml:"slug"`
+	Name    string          `yaml:"name"`
+	Country string          `yaml:"country"`
+	Role    string          `yaml:"role"`
+	TZ      string          `yaml:"tz"`
+	OT      hockey.OTFormat `yaml:"ot"`
+	// Layers adopted for live predictions after the phase 2 ablation
+	// (docs/DECISIONS.md); empty = baseline only.
+	Layers    []string `yaml:"layers"`
 	APIHockey struct {
 		ID      int      `yaml:"id"`
 		Search  string   `yaml:"search"`

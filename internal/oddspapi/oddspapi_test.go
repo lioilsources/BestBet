@@ -1,6 +1,9 @@
 package oddspapi
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestParseHistorical(t *testing.T) {
 	b := []byte(`{"fixtureId":"id1","bookmakers":{"pinnacle":{"markets":{"101":{"outcomes":{
@@ -35,5 +38,14 @@ func TestParseFixturesAndNormalize(t *testing.T) {
 	}
 	if q := Normalize(mk["1020"], "1", 2.6); q.Market != "puck_line" || q.Selection != "home" || *q.Line != -1.5 {
 		t.Errorf("puck line: %+v", q)
+	}
+}
+
+func TestRetryAfter(t *testing.T) {
+	if d := retryAfter(`"details":"Please wait 3.95 seconds before making another request"`); d != 4950*time.Millisecond {
+		t.Fatalf("got %v", d)
+	}
+	if d := retryAfter("http 429"); d != 5*time.Second {
+		t.Fatalf("got %v", d)
 	}
 }
