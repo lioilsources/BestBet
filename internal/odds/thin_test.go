@@ -24,3 +24,19 @@ func TestThinKeepsGateRoles(t *testing.T) {
 		}
 	}
 }
+
+func TestThinAtMarksProvisional(t *testing.T) {
+	start := time.Date(2026, 11, 9, 1, 0, 0, 0, time.UTC)
+	pts := []Point{
+		{Key: "k", At: start.Add(-48 * time.Hour), I: 0},
+		{Key: "k", At: start.Add(-30 * time.Hour), I: 1},
+		{Key: "k", At: start.Add(-10 * time.Hour), I: 2},
+	}
+	got := ThinAt(pts, start, start.Add(-5*time.Hour))
+	if got[0] != "opening" || got[1] != "t24h" || got[2] != "adhoc" {
+		t.Fatalf("%v", got)
+	}
+	if got := ThinAt(pts, start, start.Add(time.Hour)); got[2] != "closing" {
+		t.Fatalf("after start: %v", got)
+	}
+}

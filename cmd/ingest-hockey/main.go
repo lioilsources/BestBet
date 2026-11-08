@@ -10,6 +10,8 @@
 //	ingest-hockey odds     [-league s]         # one API-HOCKEY odds snapshot now
 //	ingest-hockey snapshot                     # cron: odds for games entering T-24h/T-1h/closing
 //	ingest-hockey oddspapi -league s -from 2026-01-01 -to 2026-06-30 [-books pinnacle,bet365,unibet]
+//	ingest-hockey oddspapi -league s -live -books pinnacle,betano.cz,merkurxtip.cz  # cron: −30 h … +36 h
+//	ingest-hockey hints                        # cron: record market-value-v1 hints (plan 03 §3)
 //	ingest-hockey report   [-out DATA_M0.md]
 //
 // Environment: DATABASE_URL, APIHOCKEY_KEY, ODDSPAPI_KEY, CACHE_DIR (data/cache),
@@ -32,6 +34,7 @@ import (
 
 	"github.com/lioilsources/BestBet/internal/config"
 	"github.com/lioilsources/BestBet/internal/db/dbq"
+	"github.com/lioilsources/BestBet/internal/hint"
 	"github.com/lioilsources/BestBet/internal/httpcache"
 	"github.com/lioilsources/BestBet/internal/ingest"
 	"github.com/lioilsources/BestBet/internal/oddspapi"
@@ -44,7 +47,7 @@ const userAgent = "BestBet-M0/0.1 (research; low rate)"
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|drop-mock|leagues|games|swehockey|nhl|nhl-coaches|odds|snapshot|oddspapi|report> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|drop-mock|leagues|games|swehockey|nhl|nhl-coaches|odds|snapshot|oddspapi|hints|report> [flags]")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -64,6 +67,7 @@ func run(ctx context.Context, cmd string, args []string) error {
 	from := fs.String("from", "", "oddspapi: from date YYYY-MM-DD")
 	to := fs.String("to", "", "oddspapi: to date YYYY-MM-DD")
 	books := fs.String("books", "pinnacle,bet365,unibet", "oddspapi: up to 3 bookmaker slugs")
+	live := fs.Bool("live", false, "oddspapi: window from 30 h ago to 36 h ahead instead of -from/-to")
 	out := fs.String("out", "DATA_M0.md", "report: output file")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -191,13 +195,18 @@ func run(ctx context.Context, cmd string, args []string) error {
 		if err != nil {
 			return err
 		}
-		f, err := time.Parse("2006-01-02", *from)
-		if err != nil {
-			return fmt.Errorf("-from: %w", err)
-		}
-		t, err := time.Parse("2006-01-02", *to)
-		if err != nil {
-			return fmt.Errorf("-to: %w", err)
+		var f, t time.Time
+		if *live {
+			// OddsPapi() keeps fixtures up to to + 24 h.
+			now := time.Now().UTC()
+			f, t = now.Add(-30*time.Hour), now.Add(12*time.Hour)
+		} else {
+			if f, err = time.Parse("2006-01-02", *from); err != nil {
+				return fmt.Errorf("-from: %w", err)
+			}
+			if t, err = time.Parse("2006-01-02", *to); err != nil {
+				return fmt.Errorf("-to: %w", err)
+			}
 		}
 		for _, l := range leagues {
 			if _, err := ingest.OddsPapi(ctx, env, c, l, refresh(ctx, st, rows, l.Slug), f, t, strings.Split(*books, ",")); err != nil {
@@ -205,6 +214,8 @@ func run(ctx context.Context, cmd string, args []string) error {
 			}
 		}
 		return nil
+	case "hints":
+		return cmdHints(ctx, st, hint.Default(), time.Now().UTC())
 	case "report":
 		d, err := report.Load(ctx, st.Q, time.Now())
 		if err != nil {

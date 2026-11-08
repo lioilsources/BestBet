@@ -440,7 +440,7 @@ func OddsPapi(ctx context.Context, e Env, c *oddspapi.Client, l config.League, r
 			}
 			keep = append(keep, odds.Point{Key: p.Book + "|" + qs[i].Market + "|" + qs[i].Selection + "|" + line, At: p.CreatedAt, I: i})
 		}
-		kinds := odds.Thin(keep, f.StartTime)
+		kinds := odds.ThinAt(keep, f.StartTime, e.Now())
 		rows := make([]dbq.InsertOddsBatchParams, 0, len(kinds))
 		for i, kind := range kinds {
 			p := pts[i]

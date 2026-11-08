@@ -1,4 +1,5 @@
-// Command api serves the read-only API (plan 01 fáze 4, internal/api).
+// Command api serves the read-only API (plan 01 fáze 4, internal/api) and the
+// hint app UI at / (plan 03).
 //
 // Environment: DATABASE_URL, API_ADDR (127.0.0.1:8096), API_BOOKS (allowed CZ
 // books, comma list), API_CLV_MARKETS (markets with proven CLV; empty = nothing
@@ -16,10 +17,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lioilsources/BestBet/docs"
 	"github.com/lioilsources/BestBet/internal/api"
 	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/edge"
+	"github.com/lioilsources/BestBet/internal/hint"
 	"github.com/lioilsources/BestBet/internal/store"
+	"github.com/lioilsources/BestBet/internal/web"
 )
 
 // source adapts store errors to the API.
@@ -32,6 +36,8 @@ func (s source) Game(ctx context.Context, id int64) (canon.GameInfo, error) {
 	}
 	return g, err
 }
+
+func (s source) Coverage(ctx context.Context) (any, error) { return s.Store.Coverage(ctx) }
 
 func main() {
 	if err := run(); err != nil {
@@ -81,8 +87,9 @@ func run() error {
 	}
 	pol := edge.DefaultPolicy()
 	pol.CLVMarkets = set(os.Getenv("API_CLV_MARKETS"))
-	srv := &api.Server{Src: source{st}, Now: time.Now, Books: set(env("API_BOOKS", "tipsport,fortuna,chance,betano,synottip,sazka,merkur")),
-		Policy: pol, Tokens: tokens, HelpContact: os.Getenv("API_HELP"), Loc: loc}
+	srv := &api.Server{Src: source{st}, Now: time.Now, Books: set(env("API_BOOKS", "tipsport,fortuna,chance,betano,synottip,sazka,merkur,betano.cz,merkurxtip.cz")),
+		Policy: pol, Tokens: tokens, HelpContact: os.Getenv("API_HELP"), Loc: loc,
+		App: &api.App{Src: source{st}, Rule: hint.Default(), Reports: docs.FS}, Web: web.Handler()}
 	hs := &http.Server{Addr: env("API_ADDR", "127.0.0.1:8096"), Handler: srv.Handler(), ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		<-ctx.Done()

@@ -53,3 +53,20 @@ func Thin(points []Point, start time.Time) map[int]string {
 	}
 	return out
 }
+
+// ThinAt is Thin for a history read at now: a t24h, t1h or closing price
+// whose cut-off (start − 20 h, start − 1 h, start) is still in the future
+// may be superseded, so it is marked "adhoc". A later read relabels it.
+func ThinAt(points []Point, start, now time.Time) map[int]string {
+	out := Thin(points, start)
+	if start.IsZero() {
+		return out
+	}
+	cut := map[string]time.Duration{"t24h": 20 * time.Hour, "t1h": time.Hour, "closing": 0}
+	for i, k := range out {
+		if d, ok := cut[k]; ok && start.Add(-d).After(now) {
+			out[i] = "adhoc"
+		}
+	}
+	return out
+}

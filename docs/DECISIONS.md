@@ -2,6 +2,15 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-08 (M3: hint appka, rozhodnutí vlastníka)
+
+- **Vlastník otevírá M3, i když G1 a A1 neprošly.** Appka je ukázka dat, práce s nimi a evaluace. Nesází, nepřijímá peníze, nemá affiliate. Plán: `Prompts/03-PLAN-M3-appka-hint.md`.
+- **Hodnota appky je informace z trhu, ne předpověď lepší než trh:** rozdíl CZ knih proti ostrému trhu, nejlepší cena a pohyb kurzu.
+- **Hint `market-value-v1` je pevný předem** (plán 03 §3). Do deníku `hints` jde první kvalifikovaná cena na zápas a už se nepřepisuje. Brána: CLV > 0 s intervalem nad nulou na ≥ 300 hintech s uzavíracím Pinnaclem. Do té doby je hint „ve zkoušce“.
+- **Ostrý trh (Pinnacle) appka ukazuje jen jako férovou pravděpodobnost, ne jako ceny.** Kurzy a jména knih jen u CZ licencovaných knih (01 §1).
+- **UI je statické HTML a JS v binárce `api`** (go:embed). Je to nejrychlejší cesta bez Node a buildu. Flutter klient může přijít po feedbacku nad stejným `/api`.
+- **Předběžné ceny nadcházejících zápasů se ukládají jako `adhoc`.** Pozdější čtení je přeznačí na `t24h`, `t1h` nebo `closing`, takže analýzy podle snímků zůstávají čisté.
+
 ## 2026-11-08 (M1b F1: výsledek)
 
 - **Brána A1 neprošla v žádné lize** (`docs/RESULTS_M1B_F1_NHL.md`, `docs/RESULTS_M1B_F1_SWE.md`). NHL: žádná vrstva na snímku opening, t24h ani t1h nezlepší log-loss trhu o 0,5 %, všechna Δ leží v ±0,3 % a žádné neprojde BH; všechny vrstvy dohromady trh zhorší o 0,2–0,8 %. Sázky v otevíracím kurzu: kladné CLV s intervalem nad nulou mají jen wave-level (+1,7 %) a wave-vel (+1,9 %), ale na 71 a 70 sázkách s uzavíracím Pinnaclem (< 100). Allsvenskan: 83 hodnocených zápasů, nic neprojde. Podle plánu 02 **směr A končí**.

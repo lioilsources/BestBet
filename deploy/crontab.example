@@ -6,3 +6,5 @@
 30    8   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey nhl -season 2026 >> data/log/nhl.log 2>&1
 */15  *   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/ingest-hockey snapshot >> data/log/snapshot.log 2>&1
 20    *   *   *   *    cd $BESTBET && set -a && . ./.env && ./bin/predict               >> data/log/predict.log 2>&1
+# Hint app (plan 03): live odds every 2 h for the next 36 h, then the hint ledger. Needs ODDSPAPI_KEY.
+5     */2 *   *   *    cd $BESTBET && set -a && . ./.env && for l in nhl swe-allsvenskan; do ./bin/ingest-hockey oddspapi -league $l -live -books pinnacle,betano.cz,merkurxtip.cz; done >> data/log/oddspapi-live.log 2>&1 && ./bin/ingest-hockey hints >> data/log/hints.log 2>&1

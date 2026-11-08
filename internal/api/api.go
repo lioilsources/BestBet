@@ -5,6 +5,7 @@
 //	GET /matches/{id}/markets    all priced markets, offers per allowed book, contributions
 //	GET /matches/{id}/waves      both teams' wave (Kalman level, direction, stability)
 //	GET /journal                 the caller's bet journal (Bearer token)
+//	GET /api/...                 the hint app (app.go, plan 03), UI at /
 //
 // Prices are only ever shown for allowed (CZ licensed) books; every response
 // that carries a price carries the § 5j warning.
@@ -54,6 +55,8 @@ type Server struct {
 	Tokens      map[string]string // token -> user key
 	HelpContact string            // shown next to the warning
 	Loc         *time.Location    // day boundaries for /matches
+	App         *App              // app endpoints under /api (plan 03); nil = off
+	Web         http.Handler      // static app UI at /; nil = off
 
 	mu    sync.Mutex
 	waves map[string]waveCache
@@ -73,6 +76,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /matches/{id}/markets", s.markets)
 	mux.HandleFunc("GET /matches/{id}/waves", s.wavesHandler)
 	mux.HandleFunc("GET /journal", s.journal)
+	s.appRoutes(mux)
+	if s.Web != nil {
+		mux.Handle("GET /", s.Web)
+	}
 	return mux
 }
 

@@ -139,12 +139,15 @@ ON CONFLICT DO NOTHING;
 
 -- InsertOddsBatch is InsertOdds for whole odds histories: one round trip per
 -- fixture instead of one per price point (the DB sits on JODA, over the LAN).
+-- A provisional (adhoc) price is relabelled once a later read knows its role.
 -- name: InsertOddsBatch :batchexec
 INSERT INTO odds_snapshots (
     game_id, source, source_fixture_id, book, market, selection, line, price,
     raw_market, snapshot_kind, captured_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (source, source_fixture_id, book, raw_market, selection, line, captured_at)
+DO UPDATE SET snapshot_kind = EXCLUDED.snapshot_kind
+WHERE odds_snapshots.snapshot_kind = 'adhoc' AND EXCLUDED.snapshot_kind <> 'adhoc';
 
 -- name: UpsertFixtureLink :exec
 INSERT INTO fixture_links (source, source_fixture_id, league_id, game_id, match_method, detail)

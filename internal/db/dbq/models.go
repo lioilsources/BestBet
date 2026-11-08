@@ -106,6 +106,20 @@ type Goaly struct {
 	Source        string
 }
 
+type Hint struct {
+	ID          int64
+	GameID      int64
+	RuleVersion string
+	Book        string
+	Market      string
+	Selection   string
+	Price       float64
+	PSharp      float64
+	PSoft       float64
+	CapturedAt  pgtype.Timestamptz
+	RecordedAt  pgtype.Timestamptz
+}
+
 type Journal struct {
 	ID           int64
 	UserKey      string
