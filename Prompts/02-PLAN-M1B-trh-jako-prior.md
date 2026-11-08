@@ -1,4 +1,4 @@
-# 02 — Plán M1b: trh jako prior, informační okno brankáře
+# 02 — Plán M1b: trh jako prior, vlna předpokladů proti trhu
 
 Navazuje na `00-VLNA_PLAN.md` (závazný) a na výsledky brány G1
 (`docs/RESULTS_G1_NHL.md`, `docs/RESULTS_G1_SWE.md`). Pracuje se po fázích,
@@ -26,11 +26,34 @@ Hotovo:
 
 Diagnóza: stavíme pravděpodobnost **od nuly z výsledků zápasů** a soutěžíme
 s trhem, který má navíc sestavy, zranění, brankáře a peníze sharpů. To nemůže
-vyjít a 00 §3 to předvídalo: „Prior = trh. Model začíná z implikované
+vyjít a 00 §3.2 to předvídalo: „Prior = trh. Model začíná z implikované
 pravděpodobnosti Pinnacle a upravuje ji o sestavu a vlnu.“ Tahle věta se
-nikdy neimplementovala. Jediná hypotéza, kterou G1 nevyvrátila, je 00 §7
-řádek 1 a 3: hodnota existuje jen **v okně nové informace**, tedy mezi tím,
-kdy se dozvíme brankáře, a tím, kdy to trh zapracuje.
+nikdy neimplementovala.
+
+Důsledek pro dosavadní ablace: vrstvy jsme měřili **proti vlastní baseline**,
+ne proti trhu. To odpovídá na otázku „ví vlna něco, co baseline s poločasem
+180 dní neví“, ale ne na hypotézu z 00 §1.4.2: „bookmaker aktualizuje rating
+pomaleji než Kalman“. Ta se měří jen proti kurzům, které od 2026-01 máme,
+a dosud se neměřila (DECISIONS 2026-11-06: „test kopíruje vlna trh čeká na
+kurzy“). Vlna, únava, brankář, tlak tabulky, změna trenéra a okrajové ligy
+jsou tedy stále otevřené hypotézy; brankář je jen ta s největším a priori
+efektem (00 §0 bod 5) a jediná s měřitelným časem příchodu informace.
+
+### Inventura předpokladů z 00
+
+| Předpoklad (00) | Stav | Co chybí |
+|---|---|---|
+| Brankář starter/backup (§0 b. 5, §1.4.5) | projde v NHL proti baseline (−0,23 %), proti trhu neměřeno | test na prioru trhu, čas ohlášení |
+| Krátká a dlouhá vlna (§1.4.2) | proti baseline neprojde (Allsvenskan, NHL) | test proti trhu: předjímá vlna pohyb open → close? |
+| Únava, b2b, dny odpočinku (§1.1) | b2b projde v NHL, v Allsvenskan nulová informace | test na prioru trhu; dny odpočinku jako spojitá veličina netestovány |
+| Tlak: boj o titul, záchranu, derby (§1.1, §1.4.2) | **netestováno** | vrstva z tabulkového postavení a zbývajících kol; data jsou v DB |
+| Změna trenéra (§1.1, §1.4.2) | **netestováno**, tabulky `coaches`, `coach_tenures` existují | vrstva „zápasů od změny“ |
+| Drama posledního zápasu (§1.1) | **netestováno** | pozdní góly jsou v DB (třetiny, OT) jen hrubě; nízká priorita |
+| Lineup delta mimo brankáře, hloubka lavičky (§3.1) | netestováno, v Allsvenskan a NHL bez dat o hráčích za přijatelnou cenu | mimo rozsah tohoto plánu |
+| Okrajové ligy: Maxa, DEL2, Tipos (§1.4.1) | id známá, **data nestažena** | API-HOCKEY zápasy (100 požadavků/den), kurzy od 2026-01 |
+| Tenké trhy: třetiny, totaly, puck line (§1.3) | model je umí, proti trhu měřeno jen 1X2 | G1 na dalších trzích z téže distribuce |
+| Kombinace 1/5/10 (§1.4.4) | nemá smysl bez hrany na noze | až po G1b |
+| Prior = trh (§3.2) | **neimplementováno** | F1 |
 
 ## 1. Rozhodnutí vlastníka (před startem)
 
@@ -39,39 +62,59 @@ kdy se dozvíme brankáře, a tím, kdy to trh zapracuje.
 | Směr | **A:** tento plán (trh jako prior + okno brankáře). Alternativy v §7. |
 | Rozpočet | 0 Kč. Free tier OddsPapi a API-HOCKEY, veřejné NHL API. Placený tier až s výsledkem F1 a výslovným souhlasem. |
 | Zdroj ohlášených brankářů NHL | Veřejné NHL API (`gamecenter/<id>/landing`, pokud nese startující brankáře) jako první volba; DailyFaceoff jen jako záloha a jen pro interní výzkum s cache (ToS šedá zóna, 00 §7 ř. 8). Vlastník potvrdí. |
-| Časový rámec | F1 dva dny práce. F2 tři dny práce a **4–6 týdnů běhu** bez zásahu. F3 dva dny. |
+| Časový rámec | F1 tři až čtyři dny práce. F2 tři dny práce a **4–6 týdnů běhu** bez zásahu. F3 dva dny. |
 
 ## 2. Hypotézy (falzifikovatelné)
 
 - **H1 Prior = trh.** Model `market-prior-v1`: logit odmaržované pravděpodobnosti
-  trhu v čase t plus β·x vrstev (brankář, b2b), β fitované walk-forward.
-  Předpověď: na kurzech t24h je log-loss aspoň o 0,5 % lepší než trh t24h sám.
-- **H2 Horní mez hodnoty brankáře.** Když do t24h kurzu vložíme brankáře,
-  který opravdu chytal (hindsight, tedy horní mez), přiblíží se log-loss
-  uzavíracímu kurzu. Měří se, jaký díl mezery t24h → close brankář vysvětlí.
-  Když je to méně než polovina a méně než 0,5 % absolutně, okno brankáře
-  nemá cenu a směr A končí.
-- **H3 Okno existuje.** Prospektivně: sázka v okamžiku ohlášení brankáře
-  s modelem z H1 má CLV > 0 proti uzavíracímu Pinnaclu, 95 % interval nad nulou.
+  trhu v čase t plus β·x vrstev, β fitované walk-forward. Předpověď: na
+  kurzech t24h je log-loss aspoň o 0,5 % lepší než trh t24h sám, u aspoň
+  jedné vrstvy nebo jejich součtu, po Benjamini–Hochbergovi.
+- **H2 Trh zaostává za vlnou.** Rozdíl p_model − p_trh v otevíracím kurzu
+  předjímá pohyb open → close (korelace dnes 0,10–0,14 s baseline od nuly).
+  Měří se per vrstva: která vrstva pohyb předjímá a zda sázka v otevíracím
+  kurzu podle ní má CLV > 0 proti close. Tohle je test §1.4.2 „bookmaker je
+  pomalejší než Kalman“ a dělá se **jako první**, protože nepotřebuje nový sběr.
+- **H3 Horní mez hodnoty brankáře.** Když do t24h kurzu vložíme brankáře,
+  který opravdu chytal (hindsight), kolik z mezery t24h → close to vysvětlí.
+  Méně než polovina a méně než 0,5 % absolutně → okno brankáře nemá cenu.
+- **H4 Okno existuje.** Prospektivně: sázka v okamžiku ohlášení brankáře
+  s modelem z H1 má CLV > 0 proti uzavíracímu Pinnaclu, interval nad nulou.
+- **H5 Okrajové ligy.** Na Maxa lize, DEL2 a Tipos extralize je marže vyšší
+  a rozptyl knih větší (00 §1.4.1); model na prioru trhu tam zlepší log-loss
+  víc než v NHL. Kurzy jsou od 2026-01, takže je to první pohled, ne brána.
 
 ## 3. Fáze a brány
 
-### F1 Retro horní mez (data už máme)
+### F1 Vlna předpokladů proti trhu (data už máme, 3–4 dny)
 
 1. `internal/model/marketprior`: vstup odmaržovaná pravděpodobnost knihy
-   (Shin, Pinnacle; bez Pinnacle medián knih), výstup 1X2 a ML. Vrstvy ze
-   stávajícího `layers` beze změny; β fit na logitu, ridge 1, MinN 100.
-2. `cmd/backtest -model market-prior -prior t24h|t1h|open`: walk-forward
-   po týdnech jako dnes, hodnocení jen na odložených sezonách, jen NHL
-   (Allsvenskan má kurzy u 217 zápasů, to na bránu nestačí).
-3. Tři řádky výsledků per prior: trh sám, trh + b2b, trh + b2b + brankář
-   (hindsight). Ke každému log-loss, Brier, bootstrap interval rozdílu.
-4. `docs/RESULTS_M1B_F1.md`, zápis do DECISIONS.
+   (Shin, Pinnacle; bez Pinnacle medián knih), výstup 1X2 a ML. Stávající
+   vrstvy `layers` beze změny; β fit na logitu, ridge 1, MinN 100.
+2. Nové levné vrstvy do `layers`, konfigurace pevně předem, zapsat do
+   DECISIONS **před** prvním během: `rest-days` (log dnů odpočinku, rozdíl),
+   `pressure` (body na záchranu a na play-off vztažené k zbývajícím kolům,
+   jen poslední třetina základní části), `coach-change` (1 prvních 10 zápasů
+   nového trenéra). Drama posledního zápasu a hloubka lavičky se vynechávají
+   (nízká priorita, bez dat).
+3. `cmd/backtest -model market-prior -prior open|t24h|t1h`: walk-forward
+   po týdnech, hodnocení jen na odložených sezonách, NHL jako hlavní vzorek
+   (~1 000 zápasů s kurzy), Allsvenskan jako druhý (217).
+4. Výstup per vrstva a prior: log-loss proti trhu samotnému, bootstrap
+   interval, BH; korelace s pohybem open → close; CLV sázky v open podle
+   vrstvy (H2). Zvlášť řádek brankář hindsight (H3).
+5. Souběžně stáhnout zápasy Maxa, DEL2 a Tipos přes API-HOCKEY (100
+   požadavků/den, přes noc s cache) a kurzy OddsPapi od 2026-01; stejný
+   report na nich jako první pohled (H5).
+6. `docs/RESULTS_M1B_F1.md`, zápis do DECISIONS.
 
-**Brána A1:** H2 platí (brankář vysvětlí ≥ polovinu mezery t24h → close
-a ≥ 0,5 % log-loss). Neplatí → směr A končí, plán se archivuje s výsledky.
+**Brána A1:** aspoň jedna vrstva zlepší prior trhu o ≥ 0,5 % po BH **nebo**
+má CLV > 0 v otevíracím kurzu s intervalem nad nulou. Pak F2 jde dál jen
+s vrstvami, které prošly; brankář jde do F2 jen když projde H3. Když neprojde
+nic, směr A končí a plán se archivuje s výsledky; to je nejpravděpodobnější
+výsledek a je to po 3–4 dnech.
 
-### F2 Prospektivní sběr (JODA, cron)
+### F2 Prospektivní sběr (JODA, cron, jen pro vrstvy z A1)
 
 1. Tabulka `goalie_announcements(game_id, side, player_id, source, seen_at)`;
    zapisuje se **každá** změna, nikdy přepis. Zdroj podle §1.
@@ -124,8 +167,8 @@ před i po ohlášení. Méně než 150 po 6 týdnech → sběr je neudržiteln�
 
 ## 5. Co se nedělá
 
-Žádná appka ani UI. Žádné nové ligy (Maxa, DEL2, Extraliga) dřív než
-projde A1. Žádné nové vrstvy baseline. Žádný placený tier bez souhlasu.
+Žádná appka ani UI. Z nových lig jen Maxa, DEL2 a Tipos (F1 bod 5), Extraliga
+ne (Sportradar, 00 §7 ř. 3). Žádné změny baseline ani jejích hyperparametrů. Žádný placený tier bez souhlasu.
 Žádné scrapování Tipsportu, Fortuny ani Flashscore (00 §7 ř. 8).
 
 ## 6. Pravidla práce pro Opus
@@ -149,5 +192,6 @@ projde A1. Žádné nové vrstvy baseline. Žádný placený tier bez souhlasu.
 | C | Produkt bez sázkové hrany: deník, vlny a brankáři jako vizualizace, bez tipů. | M3 Flutter ~3 týdny, bez modelu proti trhu | Retence tipovaček bez peněz v sázce je mizerná (00 §7 ř. 9); musel by být jiný důvod otevřít. |
 | D | Ukončit a archivovat. | 0 | Výstup je čistý negativní výsledek s daty, i to má cenu. |
 
-Doporučení: A. Je to nejlevnější test jediné hypotézy, která přežila, a po
-F1 (dva dny) je jasné, zda stojí za 6 týdnů sběru.
+Doporučení: A. F1 je nejlevnější test všech předpokladů z 00 najednou, proti
+trhu místo proti vlastní baseline, na datech, která už máme. Po 3–4 dnech je
+jasné, které předpoklady přežily a zda stojí za 6 týdnů sběru.
