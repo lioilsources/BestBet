@@ -2,6 +2,15 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-08 (M1b F1: konfigurace pevně předem, zapsáno před prvním během)
+
+- **Model `market-prior-v1`, jen 1X2.** Prior p0 = odmaržovaný (Shin) kurz v daném snímku: `opening`, `t24h`, `t1h`; `closing` jen jako diagnostika (cíl, ne sázka). Zdroj: Pinnacle, když má všechny tři výběry; jinak medián cen dostupných knih po výběrech a Shin. Úprava: s = Σ β_j·x_j, p_dom ∝ p0_dom·e^s, p_remíza ∝ p0_remíza, p_hosté ∝ p0_hosté·e^−s. β fit Newtonem na multinomické věrohodnosti, ridge 1, walk-forward po 7 dnech, trénink = dřívější zápasy se stejným snímkem a výsledkem; vrstva s < 100 aktivními tréninkovými zápasy má β = 0. Bez interceptu (trh sám = všechna β nulová).
+- **Příznaky x (domácí minus hosté, kladné = pro domácí), všechny kauzální:** `goalie` = adj startéra hostů − adj startéra domácích (skutečný startér, tedy horní mez, H3); `wave-level` = Kalmanova úroveň dom − hosté (oba ≥ 5 zápasů); `wave-vel` = 10 × rozdíl rychlostí; `b2b` = b2b hostů − b2b domácích; `rest-days` = ln(1 + min(dny, 4)) dom − hosté, jen když oba mají předchozí zápas v sezoně; `pressure` = „v boji o čáru“ dom − hosté, kde tým je v boji, když odehrál ≥ 60 % základní části a |body − body čáry| ≤ zbývající zápasy × 1; čára = průměr bodů týmů na místě C a C+1 (NHL C = 16 přes celou ligu, konference se ignorují; Allsvenskan C = 10 play-off a C = 12 baráž, platí bližší čára); body NHL 2/2/1/0, Allsvenskan 3/2/1/0 (výhra, výhra po prodloužení, prohra po prodloužení, prohra); `coach-change` = 1 v prvních 10 zápasech hlavního trenéra nastoupivšího během sezony (ne v létě), dom − hosté, jen NHL (trenéři z `gamecenter/<id>/right-rail`); `periods` = ln(p_dom/p_hosté) naší baseline − totéž u p0 (přidá náš model něco k trhu?).
+- **Výstupy per vrstva a snímek:** párový Δ log-loss proti trhu samotnému s 95% intervalem, p a BH (q = 0,10) přes všechny dvojice vrstva × snímek (bez `closing`); korelace (p_upr − p_open) s (p_close − p_open) proti Pinnaclu; sázky v otevíracím kurzu u betano.cz a merkurxtip.cz podle pravidla 01 §2.3 (hrana ≥ 3 p. b., EV > 0, kurz ≤ 10), CLV proti uzavíracímu Pinnaclu, flat yield.
+- **H3:** podíl mezery = (LL t24h − LL t24h+goalie) / (LL t24h − LL closing) na stejných zápasech.
+- **Brána A1:** vrstva projde, když (a) na snímku opening, t24h nebo t1h má Δ ≤ −0,5 % log-loss trhu a projde BH, **nebo** (b) sázky v otevíracím kurzu mají CLV > 0 s 95% intervalem nad nulou na ≥ 100 sázkách. Brankář jde do F2 jen při splnění H3 (≥ 50 % mezery a ≥ 0,5 % absolutně). Neprojde-li nic, směr A končí.
+- **Okrajové ligy (H5) jsou první pohled, ne brána.**
+
 ## 2026-11-08 (po G1: směr M1b)
 
 - **Směr po neúspěšné G1: A, plán `Prompts/02-PLAN-M1B-trh-jako-prior.md`.** Trh jako prior (00 §3.2, dosud neimplementované) a test všech předpokladů z 00 proti trhu, ne proti vlastní baseline. Dosavadní ablace vrstev měřily jen „ví vrstva něco navíc proti baseline“; hypotéza §1.4.2 „bookmaker je pomalejší než Kalman“ se měří jen proti kurzům a dosud se neměřila.
