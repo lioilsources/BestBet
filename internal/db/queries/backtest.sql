@@ -22,3 +22,12 @@ JOIN games g ON g.id = gl.game_id
 JOIN leagues l ON l.id = g.league_id
 WHERE l.slug = $1
 ORDER BY gl.game_id, gl.side, gl.starter DESC;
+
+-- name: ListLeagueCoachTenures :many
+SELECT ct.team_id, c.name, ct.from_date, ct.to_date
+FROM coach_tenures ct
+JOIN coaches c ON c.id = ct.coach_id
+JOIN teams t ON t.id = ct.team_id
+JOIN leagues l ON l.id = t.league_id
+WHERE l.slug = $1 AND ct.role = 'head'
+ORDER BY ct.team_id, ct.from_date;

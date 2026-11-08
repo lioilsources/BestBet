@@ -47,6 +47,7 @@ func run() error {
 	sharp := flag.String("sharp", "pinnacle", "gate: reference book for the close")
 	ablNote := flag.String("gate-ablation", "žádná vrstva nezlepšila (`docs/RESULTS_PHASE2.md`)", "gate: ablation result for this league (text)")
 	books := flag.String("books", "tipsport,fortuna,chance,betano", "gate: books we may bet at (CZ licensed)")
+	m1b := flag.Bool("m1b", false, "plan 02 F1: market-prior model, every layer against the market (replaces the report)")
 	flag.Parse()
 
 	dsn := os.Getenv("DATABASE_URL")
@@ -131,6 +132,14 @@ func run() error {
 	}
 	if *gate {
 		md += gateSection(rows, odds, *holdout, *sharp, strings.Split(*books, ","), *ablNote)
+	}
+	if *m1b {
+		tenures, err := st.LoadCoachTenures(ctx, *league)
+		if err != nil {
+			return err
+		}
+		md = m1bReport(m1bInput{League: *league, Matches: matches, Odds: odds, Base: rows, Tenures: tenures,
+			Sharp: *sharp, Books: strings.Split(*books, ","), Holdout: *holdout}, time.Now())
 	}
 	if *out == "" {
 		fmt.Print(md)

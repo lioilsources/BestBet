@@ -6,6 +6,7 @@
 //	ingest-hockey games    [-league s] [-season y]
 //	ingest-hockey swehockey [-league s] [-season y] [-goalies=true]
 //	ingest-hockey nhl      [-season y] [-goalies=true]  # public NHL API, no key
+//	ingest-hockey nhl-coaches                  # head coach per finished NHL game -> tenures
 //	ingest-hockey odds     [-league s]         # one API-HOCKEY odds snapshot now
 //	ingest-hockey snapshot                     # cron: odds for games entering T-24h/T-1h/closing
 //	ingest-hockey oddspapi -league s -from 2026-01-01 -to 2026-06-30 [-books pinnacle,bet365,unibet]
@@ -43,7 +44,7 @@ const userAgent = "BestBet-M0/0.1 (research; low rate)"
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|drop-mock|leagues|games|swehockey|nhl|odds|snapshot|oddspapi|report> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: ingest-hockey <migrate|drop-mock|leagues|games|swehockey|nhl|nhl-coaches|odds|snapshot|oddspapi|report> [flags]")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -175,6 +176,14 @@ func run(ctx context.Context, cmd string, args []string) error {
 			}
 		}
 		return nil
+	case "nhl-coaches":
+		hc := &httpcache.Client{Dir: cacheDir + "/nhl", MinGap: time.Second, UserAgent: userAgent}
+		row, ok := rows["nhl"]
+		if !ok {
+			return errors.New("league nhl is not configured")
+		}
+		_, err := ingest.NHLCoaches(ctx, env, hc, row)
+		return err
 	case "snapshot":
 		return cmdSnapshot(ctx, env, rows, leagues, cacheDir)
 	case "oddspapi":

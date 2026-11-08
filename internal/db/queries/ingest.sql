@@ -201,3 +201,26 @@ INSERT INTO games (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
 )
 RETURNING id;
+
+-- name: ListNHLFinishedGames :many
+SELECT g.id, g.nhl_id, g.home_team_id, g.away_team_id, g.start_at
+FROM games g
+JOIN leagues l ON l.id = g.league_id
+WHERE l.slug = $1 AND g.nhl_id IS NOT NULL AND g.status = 'finished'
+ORDER BY g.start_at, g.id;
+
+-- name: GetCoachByName :one
+SELECT id FROM coaches WHERE name = $1 ORDER BY id LIMIT 1;
+
+-- name: InsertCoach :one
+INSERT INTO coaches (name) VALUES ($1) RETURNING id;
+
+-- name: DeleteLeagueCoachTenures :exec
+DELETE FROM coach_tenures ct
+USING teams t
+WHERE t.id = ct.team_id AND t.league_id = $1 AND ct.source = $2;
+
+-- name: InsertCoachTenure :exec
+INSERT INTO coach_tenures (coach_id, team_id, role, from_date, to_date, source)
+VALUES ($1, $2, 'head', $3, $4, $5)
+ON CONFLICT DO NOTHING;

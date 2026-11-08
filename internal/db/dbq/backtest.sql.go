@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const listLeagueCoachTenures = `-- name: ListLeagueCoachTenures :many
+SELECT ct.team_id, c.name, ct.from_date, ct.to_date
+FROM coach_tenures ct
+JOIN coaches c ON c.id = ct.coach_id
+JOIN teams t ON t.id = ct.team_id
+JOIN leagues l ON l.id = t.league_id
+WHERE l.slug = $1 AND ct.role = 'head'
+ORDER BY ct.team_id, ct.from_date
+`
+
+type ListLeagueCoachTenuresRow struct {
+	TeamID   int32
+	Name     string
+	FromDate pgtype.Date
+	ToDate   pgtype.Date
+}
+
+func (q *Queries) ListLeagueCoachTenures(ctx context.Context, slug string) ([]ListLeagueCoachTenuresRow, error) {
+	rows, err := q.db.Query(ctx, listLeagueCoachTenures, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLeagueCoachTenuresRow
+	for rows.Next() {
+		var i ListLeagueCoachTenuresRow
+		if err := rows.Scan(
+			&i.TeamID,
+			&i.Name,
+			&i.FromDate,
+			&i.ToDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLeagueGames = `-- name: ListLeagueGames :many
 SELECT g.id, g.season, g.start_at, g.home_team_id, g.away_team_id, g.phase, g.status,
        g.period_scores, g.home_60, g.away_60, g.home_score, g.away_score, g.decided_in

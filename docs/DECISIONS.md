@@ -2,6 +2,14 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-08 (M1b F1: výsledek)
+
+- **Brána A1 neprošla v žádné lize** (`docs/RESULTS_M1B_F1_NHL.md`, `docs/RESULTS_M1B_F1_SWE.md`). NHL: žádná vrstva na snímku opening, t24h ani t1h nezlepší log-loss trhu o 0,5 %, všechna Δ leží v ±0,3 % a žádné neprojde BH; všechny vrstvy dohromady trh zhorší o 0,2–0,8 %. Sázky v otevíracím kurzu: kladné CLV s intervalem nad nulou mají jen wave-level (+1,7 %) a wave-vel (+1,9 %), ale na 71 a 70 sázkách s uzavíracím Pinnaclem (< 100). Allsvenskan: 83 hodnocených zápasů, nic neprojde. Podle plánu 02 **směr A končí**.
+- **H3 neprošla.** Mezera t24h → close je v NHL 0,27 % log-loss, v Allsvenskan 2,7 % (n = 80); skutečný startující brankář z ní nevysvětlí nic (−14 % a −7 %). I s dokonalou znalostí brankáře se trh nepředběhne.
+- **coach-change je netestovatelná:** 71 trenérských období v NHL, ale jen 23 aktivních hodnocených zápasů a < 100 v tréninku, takže β zůstalo 0. Pressure v Allsvenskan je neaktivní (hodnocený podzim 2026, konec sezony 2025/26 padl do zahřátí).
+- **H5 (okrajové ligy) blokovaná:** free API-HOCKEY má jen sezony 2022–2024, Maxa, DEL2 ani Tipos 2025+ z něj nejdou. Další cesta je placený tarif nebo scraper oficiálních webů; rozhoduje vlastník.
+- **Mimo plán, průzkumně:** sázky „trh sám“ na otevírací kurz Betano/MerkurXtip proti otevíracímu Pinnaclu mají v NHL CLV +3,0 % (interval +0,9 až +5,0 %) na 47 sázkách, yield −25 %. Jde o zastaralý otevírací kurz měkké knihy proti sharp, ne o vrstvu. Nebylo to předregistrované; platí jen po novém prospektivním testu s pevnými pravidly.
+
 ## 2026-11-08 (M1b F1: konfigurace pevně předem, zapsáno před prvním během)
 
 - **Model `market-prior-v1`, jen 1X2.** Prior p0 = odmaržovaný (Shin) kurz v daném snímku: `opening`, `t24h`, `t1h`; `closing` jen jako diagnostika (cíl, ne sázka). Zdroj: Pinnacle, když má všechny tři výběry; jinak medián cen dostupných knih po výběrech a Shin. Úprava: s = Σ β_j·x_j, p_dom ∝ p0_dom·e^s, p_remíza ∝ p0_remíza, p_hosté ∝ p0_hosté·e^−s. β fit Newtonem na multinomické věrohodnosti, ridge 1, walk-forward po 7 dnech, trénink = dřívější zápasy se stejným snímkem a výsledkem; vrstva s < 100 aktivními tréninkovými zápasy má β = 0. Bez interceptu (trh sám = všechna β nulová).
