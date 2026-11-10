@@ -129,6 +129,22 @@ func (q *Queries) AttachSwehockey(ctx context.Context, arg AttachSwehockeyParams
 	return err
 }
 
+const deleteLeagueCoachTenures = `-- name: DeleteLeagueCoachTenures :exec
+DELETE FROM coach_tenures ct
+USING teams t
+WHERE t.id = ct.team_id AND t.league_id = $1 AND ct.source = $2
+`
+
+type DeleteLeagueCoachTenuresParams struct {
+	LeagueID int32
+	Source   string
+}
+
+func (q *Queries) DeleteLeagueCoachTenures(ctx context.Context, arg DeleteLeagueCoachTenuresParams) error {
+	_, err := q.db.Exec(ctx, deleteLeagueCoachTenures, arg.LeagueID, arg.Source)
+	return err
+}
+
 const findGameByTeams = `-- name: FindGameByTeams :many
 SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id FROM games
 WHERE league_id = $1 AND home_team_id = $2 AND away_team_id = $3
@@ -196,6 +212,17 @@ func (q *Queries) FindGameByTeams(ctx context.Context, arg FindGameByTeamsParams
 		return nil, err
 	}
 	return items, nil
+}
+
+const getCoachByName = `-- name: GetCoachByName :one
+SELECT id FROM coaches WHERE name = $1 ORDER BY id LIMIT 1
+`
+
+func (q *Queries) GetCoachByName(ctx context.Context, name string) (int32, error) {
+	row := q.db.QueryRow(ctx, getCoachByName, name)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getGameByApihockeyID = `-- name: GetGameByApihockeyID :one
@@ -349,6 +376,42 @@ func (q *Queries) HasSnapshot(ctx context.Context, arg HasSnapshotParams) (bool,
 	var present bool
 	err := row.Scan(&present)
 	return present, err
+}
+
+const insertCoach = `-- name: InsertCoach :one
+INSERT INTO coaches (name) VALUES ($1) RETURNING id
+`
+
+func (q *Queries) InsertCoach(ctx context.Context, name string) (int32, error) {
+	row := q.db.QueryRow(ctx, insertCoach, name)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertCoachTenure = `-- name: InsertCoachTenure :exec
+INSERT INTO coach_tenures (coach_id, team_id, role, from_date, to_date, source)
+VALUES ($1, $2, 'head', $3, $4, $5)
+ON CONFLICT DO NOTHING
+`
+
+type InsertCoachTenureParams struct {
+	CoachID  int32
+	TeamID   int32
+	FromDate pgtype.Date
+	ToDate   pgtype.Date
+	Source   string
+}
+
+func (q *Queries) InsertCoachTenure(ctx context.Context, arg InsertCoachTenureParams) error {
+	_, err := q.db.Exec(ctx, insertCoachTenure,
+		arg.CoachID,
+		arg.TeamID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.Source,
+	)
+	return err
 }
 
 const insertGameNHL = `-- name: InsertGameNHL :one
@@ -690,6 +753,48 @@ func (q *Queries) ListLeagues(ctx context.Context) ([]League, error) {
 			&i.ApihockeyID,
 			&i.OddspapiTournamentID,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNHLFinishedGames = `-- name: ListNHLFinishedGames :many
+SELECT g.id, g.nhl_id, g.home_team_id, g.away_team_id, g.start_at
+FROM games g
+JOIN leagues l ON l.id = g.league_id
+WHERE l.slug = $1 AND g.nhl_id IS NOT NULL AND g.status = 'finished'
+ORDER BY g.start_at, g.id
+`
+
+type ListNHLFinishedGamesRow struct {
+	ID         int64
+	NhlID      *int64
+	HomeTeamID int32
+	AwayTeamID int32
+	StartAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ListNHLFinishedGames(ctx context.Context, slug string) ([]ListNHLFinishedGamesRow, error) {
+	rows, err := q.db.Query(ctx, listNHLFinishedGames, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNHLFinishedGamesRow
+	for rows.Next() {
+		var i ListNHLFinishedGamesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NhlID,
+			&i.HomeTeamID,
+			&i.AwayTeamID,
+			&i.StartAt,
 		); err != nil {
 			return nil, err
 		}

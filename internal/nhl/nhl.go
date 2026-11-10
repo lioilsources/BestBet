@@ -252,3 +252,28 @@ func mmss(s string) int {
 	}
 	return a*60 + b
 }
+
+// HeadCoaches holds the head coach of each side, from gamecenter/<id>/right-rail.
+type HeadCoaches struct {
+	Home, Away string
+}
+
+// ParseRightRail returns the head coaches; empty names when the feed has none.
+func ParseRightRail(b []byte) (HeadCoaches, error) {
+	type coach struct {
+		HeadCoach struct {
+			Default string `json:"default"`
+		} `json:"headCoach"`
+	}
+	var doc struct {
+		GameInfo struct {
+			HomeTeam coach `json:"homeTeam"`
+			AwayTeam coach `json:"awayTeam"`
+		} `json:"gameInfo"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return HeadCoaches{}, fmt.Errorf("decode nhl right-rail: %w", err)
+	}
+	return HeadCoaches{Home: strings.TrimSpace(doc.GameInfo.HomeTeam.HeadCoach.Default),
+		Away: strings.TrimSpace(doc.GameInfo.AwayTeam.HeadCoach.Default)}, nil
+}
