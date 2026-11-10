@@ -12,6 +12,180 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const coverageCoaches = `-- name: CoverageCoaches :many
+SELECT l.slug, count(*) AS tenures, count(DISTINCT t.coach_id) AS coaches
+FROM coach_tenures t
+JOIN teams tm ON tm.id = t.team_id
+JOIN leagues l ON l.id = tm.league_id
+GROUP BY l.slug
+`
+
+type CoverageCoachesRow struct {
+	Slug    string
+	Tenures int64
+	Coaches int64
+}
+
+func (q *Queries) CoverageCoaches(ctx context.Context) ([]CoverageCoachesRow, error) {
+	rows, err := q.db.Query(ctx, coverageCoaches)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CoverageCoachesRow
+	for rows.Next() {
+		var i CoverageCoachesRow
+		if err := rows.Scan(&i.Slug, &i.Tenures, &i.Coaches); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const coverageGames = `-- name: CoverageGames :many
+SELECT l.slug, l.name, g.season, count(*) AS games,
+       count(*) FILTER (WHERE g.status = 'finished') AS finished,
+       count(*) FILTER (WHERE g.status = 'scheduled' AND g.start_at > now()) AS upcoming,
+       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM goalies x WHERE x.game_id = g.id AND x.starter)) AS with_goalies,
+       count(*) FILTER (WHERE EXISTS (SELECT 1 FROM odds_snapshots o WHERE o.game_id = g.id)) AS with_odds,
+       min(g.start_at)::timestamptz AS first_at, max(g.start_at)::timestamptz AS last_at
+FROM games g
+JOIN leagues l ON l.id = g.league_id
+GROUP BY l.slug, l.name, g.season
+ORDER BY l.slug, g.season
+`
+
+type CoverageGamesRow struct {
+	Slug        string
+	Name        string
+	Season      int32
+	Games       int64
+	Finished    int64
+	Upcoming    int64
+	WithGoalies int64
+	WithOdds    int64
+	FirstAt     pgtype.Timestamptz
+	LastAt      pgtype.Timestamptz
+}
+
+func (q *Queries) CoverageGames(ctx context.Context) ([]CoverageGamesRow, error) {
+	rows, err := q.db.Query(ctx, coverageGames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CoverageGamesRow
+	for rows.Next() {
+		var i CoverageGamesRow
+		if err := rows.Scan(
+			&i.Slug,
+			&i.Name,
+			&i.Season,
+			&i.Games,
+			&i.Finished,
+			&i.Upcoming,
+			&i.WithGoalies,
+			&i.WithOdds,
+			&i.FirstAt,
+			&i.LastAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const coverageOdds = `-- name: CoverageOdds :many
+SELECT l.slug, o.source, o.book, o.snapshot_kind, count(*) AS quotes, count(DISTINCT o.game_id) AS games,
+       max(o.captured_at)::timestamptz AS last_capture
+FROM odds_snapshots o
+JOIN games g ON g.id = o.game_id
+JOIN leagues l ON l.id = g.league_id
+WHERE o.market = '1x2'
+GROUP BY l.slug, o.source, o.book, o.snapshot_kind
+ORDER BY l.slug, o.source, o.book, o.snapshot_kind
+`
+
+type CoverageOddsRow struct {
+	Slug         string
+	Source       string
+	Book         string
+	SnapshotKind string
+	Quotes       int64
+	Games        int64
+	LastCapture  pgtype.Timestamptz
+}
+
+func (q *Queries) CoverageOdds(ctx context.Context) ([]CoverageOddsRow, error) {
+	rows, err := q.db.Query(ctx, coverageOdds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CoverageOddsRow
+	for rows.Next() {
+		var i CoverageOddsRow
+		if err := rows.Scan(
+			&i.Slug,
+			&i.Source,
+			&i.Book,
+			&i.SnapshotKind,
+			&i.Quotes,
+			&i.Games,
+			&i.LastCapture,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const coveragePredictions = `-- name: CoveragePredictions :many
+SELECT model_version, count(*) AS predictions, max(computed_at)::timestamptz AS last_at
+FROM predictions
+WHERE kind = 'live'
+GROUP BY model_version
+ORDER BY model_version
+`
+
+type CoveragePredictionsRow struct {
+	ModelVersion string
+	Predictions  int64
+	LastAt       pgtype.Timestamptz
+}
+
+func (q *Queries) CoveragePredictions(ctx context.Context) ([]CoveragePredictionsRow, error) {
+	rows, err := q.db.Query(ctx, coveragePredictions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CoveragePredictionsRow
+	for rows.Next() {
+		var i CoveragePredictionsRow
+		if err := rows.Scan(&i.ModelVersion, &i.Predictions, &i.LastAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getGame = `-- name: GetGame :one
 SELECT g.id, l.slug AS league_slug, l.name AS league_name, g.season, g.start_at, g.status, g.phase,
        g.home_team_id, ht.name AS home_name, g.away_team_id, at.name AS away_name,
@@ -64,6 +238,45 @@ func (q *Queries) GetGame(ctx context.Context, id int64) (GetGameRow, error) {
 		&i.DecidedIn,
 	)
 	return i, err
+}
+
+const insertHint = `-- name: InsertHint :execrows
+INSERT INTO hints (game_id, rule_version, book, market, selection, price, p_sharp, p_soft, captured_at, recorded_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+ON CONFLICT (game_id, rule_version) DO NOTHING
+`
+
+type InsertHintParams struct {
+	GameID      int64
+	RuleVersion string
+	Book        string
+	Market      string
+	Selection   string
+	Price       float64
+	PSharp      float64
+	PSoft       float64
+	CapturedAt  pgtype.Timestamptz
+	RecordedAt  pgtype.Timestamptz
+}
+
+// First qualifying price per game and rule; later prices never overwrite it.
+func (q *Queries) InsertHint(ctx context.Context, arg InsertHintParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertHint,
+		arg.GameID,
+		arg.RuleVersion,
+		arg.Book,
+		arg.Market,
+		arg.Selection,
+		arg.Price,
+		arg.PSharp,
+		arg.PSoft,
+		arg.CapturedAt,
+		arg.RecordedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertPrediction = `-- name: InsertPrediction :exec
@@ -271,6 +484,46 @@ func (q *Queries) ListGamesBetween(ctx context.Context, arg ListGamesBetweenPara
 	return items, nil
 }
 
+const listHints = `-- name: ListHints :many
+SELECT h.id, h.game_id, h.rule_version, h.book, h.market, h.selection, h.price, h.p_sharp, h.p_soft,
+       h.captured_at, h.recorded_at
+FROM hints h
+WHERE h.rule_version = $1
+ORDER BY h.recorded_at DESC
+`
+
+func (q *Queries) ListHints(ctx context.Context, ruleVersion string) ([]Hint, error) {
+	rows, err := q.db.Query(ctx, listHints, ruleVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Hint
+	for rows.Next() {
+		var i Hint
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameID,
+			&i.RuleVersion,
+			&i.Book,
+			&i.Market,
+			&i.Selection,
+			&i.Price,
+			&i.PSharp,
+			&i.PSoft,
+			&i.CapturedAt,
+			&i.RecordedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listJournal = `-- name: ListJournal :many
 SELECT j.id, j.game_id, j.book, j.market, j.selection, j.line, j.price, j.stake, j.placed_at,
        j.model_p, j.closing_price, j.result, j.note
@@ -319,6 +572,53 @@ func (q *Queries) ListJournal(ctx context.Context, userKey string) ([]ListJourna
 			&i.ClosingPrice,
 			&i.Result,
 			&i.Note,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const oddsHistory = `-- name: OddsHistory :many
+SELECT o.book, o.market, o.selection, o.line, o.price, o.captured_at, o.snapshot_kind
+FROM odds_snapshots o
+JOIN games g ON g.id = o.game_id
+WHERE o.game_id = $1 AND o.captured_at < g.start_at
+ORDER BY o.captured_at, o.book, o.market, o.selection
+`
+
+type OddsHistoryRow struct {
+	Book         string
+	Market       string
+	Selection    string
+	Line         *float64
+	Price        float64
+	CapturedAt   pgtype.Timestamptz
+	SnapshotKind string
+}
+
+// Every stored pre-start price of a game (thinned kinds plus provisional reads).
+func (q *Queries) OddsHistory(ctx context.Context, gameID *int64) ([]OddsHistoryRow, error) {
+	rows, err := q.db.Query(ctx, oddsHistory, gameID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OddsHistoryRow
+	for rows.Next() {
+		var i OddsHistoryRow
+		if err := rows.Scan(
+			&i.Book,
+			&i.Market,
+			&i.Selection,
+			&i.Line,
+			&i.Price,
+			&i.CapturedAt,
+			&i.SnapshotKind,
 		); err != nil {
 			return nil, err
 		}

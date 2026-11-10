@@ -8,10 +8,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/edge"
+	"github.com/lioilsources/BestBet/internal/hint"
 	"github.com/lioilsources/BestBet/internal/live"
 	"github.com/lioilsources/BestBet/internal/model/layers"
 	"github.com/lioilsources/BestBet/internal/model/periods"
@@ -149,3 +151,49 @@ func TestAPI(t *testing.T) {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+type fakeApp struct{ f *fake }
+
+func (a fakeApp) OddsHistory(_ context.Context, id int64) ([]canon.OddsQuote, error) {
+	return a.f.odds[id], nil
+}
+func (a fakeApp) Hints(context.Context, string) ([]hint.Entry, error) { return nil, nil }
+func (a fakeApp) Coverage(context.Context) (any, error)               { return map[string]int{"games": 1}, nil }
+
+func TestApp(t *testing.T) {
+	s, f, target := setup(t)
+	at := target.StartAt.Add(-3 * time.Hour)
+	// Sharp book sees the away side far more likely than tipsport prices it.
+	for sel, price := range map[string]float64{"home": 2.4, "draw": 4.2, "away": 2.9} {
+		f.odds[target.ID] = append(f.odds[target.ID], canon.OddsQuote{Book: "pinnacle", Market: "1x2", Selection: sel, Price: price, CapturedAt: at, Kind: "opening"})
+	}
+	rule := hint.Default()
+	rule.Soft = []string{"tipsport"}
+	s.App = &App{Src: fakeApp{f}, Rule: rule, Reports: fstest.MapFS{"RESULTS_X.md": {Data: []byte("# Report X\n")}}}
+	h := s.Handler()
+	code, out := get(t, h, "/api/board?hours=168", "")
+	if code != 200 {
+		t.Fatalf("board %d %v", code, out)
+	}
+	var row map[string]any
+	for _, g := range out["games"].([]any) {
+		if int64(g.(map[string]any)["id"].(float64)) == target.ID {
+			row = g.(map[string]any)
+		}
+	}
+	if row == nil || row["sharp"] == nil || row["hint"] == nil || row["hint"].(map[string]any)["selection"] != "away" {
+		t.Fatalf("board row %v", row)
+	}
+	if code, out := get(t, h, "/api/games/"+itoa(target.ID), ""); code != 200 || out["history"].(map[string]any)["sharp"] == nil {
+		t.Fatalf("game %d %v", code, out)
+	}
+	if code, out := get(t, h, "/api/eval", ""); code != 200 || out["summary"].(map[string]any)["n"].(float64) != 0 {
+		t.Fatalf("eval %d %v", code, out)
+	}
+	if code, out := get(t, h, "/api/reports", ""); code != 200 || len(out["reports"].([]any)) != 1 {
+		t.Fatalf("reports %d %v", code, out)
+	}
+	if code, _ := get(t, h, "/api/reports/..%2Fsecret", ""); code != 400 && code != 404 {
+		t.Fatalf("traversal %d", code)
+	}
+}

@@ -36,3 +36,15 @@ Data jdou celá znovu postavit z HTTP cache v `data/cache` (swehockey, NHL), bez
 ## Binárky a cron na JODĚ
 
 Binárky pro Linux (`GOOS=linux GOARCH=amd64 CGO_ENABLED=0`) jdou do `~/deploy/BestBet/bin`, k nim `config/` a `data/cache` (rsync). `DATABASE_URL` v `.env` na JODĚ míří na LAN adresu JODY, protože port nesedí na loopbacku. Cron podle `deploy/crontab.example`; bez klíčů jen řádky swehockey, nhl a predict. Crontab instaluje Olin.
+
+## Hint appka (plán 03)
+
+Služba `api` v téže compose: distroless obraz a binárka `bin/api` připojená jen pro čtení. UI i `/api` běží na portu 8096. `API_BIND` v `.env` na JODĚ určuje, kde port poslouchá. Je to jen LAN a tailnet, appka nemá přihlášení a nic citlivého neukazuje.
+
+```sh
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /tmp/api ./cmd/api
+scp /tmp/api joda:deploy/BestBet/bin/api
+ssh joda 'cd ~/deploy/BestBet && docker compose up -d --force-recreate api'
+```
+
+Živé kurzy a deník hintů dodává řádek `oddspapi -live … && hints` v `deploy/crontab.example`. Bez `ODDSPAPI_KEY` v `.env` nevznikají.
