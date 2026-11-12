@@ -210,3 +210,50 @@ func (q *Queries) ListLeagueOdds(ctx context.Context, slug string) ([]ListLeague
 	}
 	return items, nil
 }
+
+const listOddsFixtures = `-- name: ListOddsFixtures :many
+SELECT fl.source_fixture_id, g.id AS game_id, g.season, g.start_at
+FROM fixture_links fl
+JOIN games g ON g.id = fl.game_id
+JOIN leagues l ON l.id = g.league_id
+WHERE fl.source = $1 AND l.slug = $2 AND g.status = 'finished'
+ORDER BY g.start_at
+`
+
+type ListOddsFixturesParams struct {
+	Source string
+	Slug   string
+}
+
+type ListOddsFixturesRow struct {
+	SourceFixtureID string
+	GameID          int64
+	Season          int32
+	StartAt         pgtype.Timestamptz
+}
+
+// Finished games of a league with their odds-feed fixture id (timing, plan 04 L6).
+func (q *Queries) ListOddsFixtures(ctx context.Context, arg ListOddsFixturesParams) ([]ListOddsFixturesRow, error) {
+	rows, err := q.db.Query(ctx, listOddsFixtures, arg.Source, arg.Slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOddsFixturesRow
+	for rows.Next() {
+		var i ListOddsFixturesRow
+		if err := rows.Scan(
+			&i.SourceFixtureID,
+			&i.GameID,
+			&i.Season,
+			&i.StartAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

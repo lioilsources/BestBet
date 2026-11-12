@@ -72,3 +72,29 @@ func TestHTTPErrorNotCached(t *testing.T) {
 		t.Fatalf("error response must not be cached, calls=%d", n)
 	}
 }
+
+func TestOffline(t *testing.T) {
+	calls := 0
+	rt := rtFunc(func(*http.Request) (*http.Response, error) {
+		calls++
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("body")), Header: http.Header{}}, nil
+	})
+	now := time.Date(2026, 11, 5, 6, 0, 0, 0, time.UTC)
+	dir := t.TempDir()
+	on := &Client{HTTP: &http.Client{Transport: rt}, Dir: dir, Now: func() time.Time { return now }}
+	ctx := context.Background()
+	if _, _, err := on.Get(ctx, Request{URL: "http://x/a", Key: "a", TTL: time.Hour}); err != nil {
+		t.Fatal(err)
+	}
+	off := &Client{HTTP: &http.Client{Transport: rt}, Dir: dir, Offline: true, Now: func() time.Time { return now.Add(48 * time.Hour) }}
+	// Expired by TTL but cached: offline serves it.
+	if b, cached, err := off.Get(ctx, Request{URL: "http://x/a", Key: "a", TTL: time.Hour}); err != nil || !cached || string(b) != "body" {
+		t.Fatalf("offline hit: %q %v %v", b, cached, err)
+	}
+	if _, _, err := off.Get(ctx, Request{URL: "http://x/b", Key: "b"}); !errors.Is(err, ErrOffline) {
+		t.Fatalf("want offline error, got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("network calls: %d", calls)
+	}
+}
