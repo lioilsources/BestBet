@@ -47,6 +47,9 @@ func run() error {
 	sharp := flag.String("sharp", "pinnacle", "gate: reference book for the close")
 	ablNote := flag.String("gate-ablation", "žádná vrstva nezlepšila (`docs/RESULTS_PHASE2.md`)", "gate: ablation result for this league (text)")
 	books := flag.String("books", "tipsport,fortuna,chance,betano", "gate: books we may bet at (CZ licensed)")
+	timingMode := flag.Bool("timing", false, "plan 04 L6: CZ books against sharp moves from the cached OddsPapi histories (no request)")
+	timingLeagues := flag.String("timing-leagues", "nhl,swe-allsvenskan", "timing: league slugs")
+	cacheDir := flag.String("cache", "data/cache", "timing: HTTP cache directory")
 	m1b := flag.Bool("m1b", false, "plan 02 F1: market-prior model, every layer against the market (replaces the report)")
 	flag.Parse()
 
@@ -60,6 +63,13 @@ func run() error {
 		return err
 	}
 	defer st.Close()
+	if *timingMode {
+		md, err := runTiming(ctx, st, strings.Split(*timingLeagues, ","), *cacheDir, time.Now())
+		if err != nil {
+			return err
+		}
+		return write(*out, md)
+	}
 	matches, odds, err := st.LoadMatches(ctx, *league)
 	if err != nil {
 		return err
