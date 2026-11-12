@@ -3,7 +3,7 @@
 <!-- Max 80 řádků. Co se nevejde, jde do docs/ a sem jeden odkaz. Veřejné repo: žádné LAN IP, domovské cesty, ID. -->
 
 ## Účel
-Hokejový pravděpodobnostní model („Vlna“) a test edge proti trhu na okrajových ligách. Plán: `Prompts/00-VLNA_PLAN.md` (závazný), doplněk `Prompts/01-been-here/` (fáze 0–8, specifikace týmu a srovnání). Po neúspěšné G1 navazuje `Prompts/02-PLAN-M1B-trh-jako-prior.md` (trh jako prior, okno brankáře). A1 neprošla; aktuální je `Prompts/03-PLAN-M3-appka-hint.md` (hint appka, `cmd/api` + `internal/web`).
+Hokejový pravděpodobnostní model („Vlna“) a test edge proti trhu na okrajových ligách. Plán: `Prompts/00-VLNA_PLAN.md` (závazný), doplněk `Prompts/01-been-here/` (fáze 0–8, specifikace týmu a srovnání). Po neúspěšné G1 navazuje `Prompts/02-PLAN-M1B-trh-jako-prior.md` (trh jako prior, okno brankáře). A1 neprošla; pak `Prompts/03-PLAN-M3-appka-hint.md` (hint appka, `cmd/api` + `internal/web`); aktuální zadání je `Prompts/04-PLAN-M3B-sestavy-a-provoz.md`.
 
 ## Build a test
 ```

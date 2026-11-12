@@ -71,7 +71,7 @@ Vlastník potvrdil, že „informace, které trh skrývá“ jsou i informace mi
 | Informace | Zdroj | Kdy je k dispozici |
 |---|---|---|
 | Kdo hrál, s jakým TOI, body, střelami | NHL `gamecenter/{id}/boxscore` po zápase (dnes z něj bereme jen brankáře) | po zápase; historie je v HTTP cache, takže zpětné doplnění 2024/25–2026/27 nestojí žádný request |
-| Potvrzená sestava před zápasem | tentýž boxscore, jakmile zápas přejde do stavu `PRE` (rozbruslení) | zhruba 30–60 min před začátkem, stejné okno jako brankář (H3) |
+| Potvrzená sestava před zápasem | tentýž boxscore, jakmile zápas přejde do stavu `PRE` (rozbruslení); **neověřeno, viz plán 04 L0** | zhruba 30–60 min před začátkem, stejné okno jako brankář (H3) |
 | Škrty (`scratches`) | `gamecenter/{id}/right-rail` | až po zápase, bez důvodu |
 | Soupiska týmu | `roster/{tým}/current` | kdykoli, ale obsahuje i hráče na IR (28 jmen), zraněné neoznačuje |
 | Důvod absence (zranění, trest, zdravý škrt) | NHL API **nemá** | nikdy; důvod je `unknown` |
