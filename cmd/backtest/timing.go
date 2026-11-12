@@ -95,6 +95,15 @@ func minutes(xs []float64) string {
 	return fmt.Sprintf("%.0f (%.0f–%.0f)", q2, q1, q3)
 }
 
+func period(d time.Duration) string {
+	if d < time.Hour {
+		return fmt.Sprintf("%.0f min", d.Minutes())
+	}
+	return fmt.Sprintf("%.0f h", d.Hours())
+}
+
+func comma(f string, a ...any) string { return strings.ReplaceAll(fmt.Sprintf(f, a...), ".", ",") }
+
 func share(n, d int) string {
 	if d == 0 {
 		return "–"
@@ -147,7 +156,7 @@ func timingReport(ls []timingLeague, rule hint.Rule, generated time.Time) string
 			}
 		}
 		_, medStart, _ := quartiles(toStart)
-		w("### Pohyby Pinnaclu a reakce knih\n\nPohybů: %d (%.2f na zápas), medián %.1f h před začátkem.\n\n", events, float64(events)/float64(max(1, l.Cached)), medStart)
+		w("### Pohyby Pinnaclu a reakce knih\n\nPohybů: %d (%s na zápas), medián %s h před začátkem.\n\n", events, comma("%.2f", float64(events)/float64(max(1, l.Cached))), comma("%.1f", medStart))
 		w("| Kniha | Pohybů s cenou knihy | Vedla | Zareagovala | Do 2 h | Zpoždění min, medián (kvartily) |\n|---|---|---|---|---|---|\n")
 		for _, bk := range rule.Soft {
 			a := per[bk]
@@ -180,19 +189,19 @@ func timingReport(ls []timingLeague, rule hint.Rule, generated time.Time) string
 			}
 		}
 		n := len(durs)
-		w("\n### Okna hintu\n\nOken: %d (%.2f na zápas). Betano %d, MerkurXtip %d. Délka v min, medián (kvartily): %s.\n\n", n, float64(n)/float64(max(1, l.Cached)), perBook["betano.cz"], perBook["merkurxtip.cz"], minutes(durs))
+		w("\n### Okna hintu\n\nOken: %d (%s na zápas). Betano %d, MerkurXtip %d. Délka v min, medián (kvartily): %s.\n\n", n, comma("%.2f", float64(n)/float64(max(1, l.Cached))), perBook["betano.cz"], perBook["merkurxtip.cz"], minutes(durs))
 		w("| Perioda cronu | Očekávaný podíl zachycených oken |\n|---|---|\n")
 		for _, p := range polls {
 			v := "–"
 			if n > 0 {
 				v = fmt.Sprintf("%.0f %%", 100*catch[p]/float64(n))
 			}
-			w("| %s | %s |\n", p, v)
+			w("| %s | %s |\n", period(p), v)
 		}
 		all, am := meanCI(wins), meanCI(after)
 		w("\n| Okna | n | CLV průměr | 95%% interval |\n|---|---|---|---|\n")
-		w("| všechna s uzavřením | %d | %+.2f %% | %+.2f až %+.2f %% |\n", all.N, 100*all.MeanDelta1X2, 100*all.CILo, 100*all.CIHi)
-		w("| otevřená do 2 h po pohybu Pinnaclu | %d | %+.2f %% | %+.2f až %+.2f %% |\n", am.N, 100*am.MeanDelta1X2, 100*am.CILo, 100*am.CIHi)
+		w("%s", comma("| všechna s uzavřením | %d | %+.2f %% | %+.2f až %+.2f %% |\n", all.N, 100*all.MeanDelta1X2, 100*all.CILo, 100*all.CIHi))
+		w("%s", comma("| otevřená do 2 h po pohybu Pinnaclu | %d | %+.2f %% | %+.2f až %+.2f %% |\n", am.N, 100*am.MeanDelta1X2, 100*am.CILo, 100*am.CIHi))
 	}
 	w("\n## Co z toho plyne pro provoz\n\nViz `docs/DECISIONS.md` (záznam k L6). Čísla nahoře jsou jediný podklad; interpretace se do reportu nepíše, aby šel přegenerovat.\n")
 	return b.String()
