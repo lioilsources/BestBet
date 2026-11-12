@@ -1,13 +1,13 @@
 # DATA_M0 — pokrytí dat (hokej)
 
-Vygenerováno `ingest-hockey report` 2026-11-07 21:30 UTC. Soubor je generovaný, ručně ho neupravuj; komentáře patří do `docs/M0.md`.
+Vygenerováno `ingest-hockey report` 2026-11-12 22:56 UTC. Soubor je generovaný, ručně ho neupravuj; komentáře patří do `docs/M0.md`.
 
 ## Souhrn per liga
 
 | Liga | Role | Sezon | Zápasů | S kurzy | S brankáři | Marže 1X2 | Marže ML | Knih | Join | Skóre M1 | Neprošlo |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| NHL | control | 4 | 4453 | 21 % | 100 % | 9,4 % | 5,1 % | 3 | 95,8 % | kontrola | knih 3 < 5; join 95,8 % < 98 % |
-| HockeyAllsvenskan | fringe | 4 | 1352 | 20 % | 96 % | 10,6 % | 8,0 % | 5 | 97,9 % | — | join 97,9 % < 98 % |
+| NHL | control | 4 | 4460 | 21 % | 100 % | 9,3 % | 5,0 % | 3 | 95,9 % | kontrola | knih 3 < 5; join 95,9 % < 98 % |
+| HockeyAllsvenskan | fringe | 4 | 1360 | 20 % | 96 % | 10,6 % | 8,0 % | 5 | 97,9 % | — | join 97,9 % < 98 % |
 
 ## Doporučení pro M1
 
@@ -15,48 +15,55 @@ Vygenerováno `ingest-hockey report` 2026-11-07 21:30 UTC. Soubor je generovaný
 
 ## Sezony
 
-| Liga | Sezona | Zápasů | S kurzy | S brankáři | Mimo základní část | Po 60 min nerozhodnuto |
-|---|---|---|---|---|---|---|
-| NHL | 2023/24 | 1400 | 0 | 1400 | 88 | 288 |
-| NHL | 2024/25 | 1398 | 0 | 1398 | 86 | 291 |
-| NHL | 2025/26 | 1394 | 698 | 1394 | 82 | 348 |
-| NHL | 2026/27 | 261 | 249 | 261 | 0 | 59 |
-| HockeyAllsvenskan | 2023/24 | 409 | 0 | 408 | 45 | 90 |
-| HockeyAllsvenskan | 2024/25 | 415 | 0 | 414 | 51 | 103 |
-| HockeyAllsvenskan | 2025/26 | 410 | 159 | 364 | 46 | 88 |
-| HockeyAllsvenskan | 2026/27 | 118 | 118 | 117 | 0 | 28 |
+| Liga | Sezona | Zápasů | S kurzy | S brankáři | S bruslaři | Mimo základní část | Po 60 min nerozhodnuto |
+|---|---|---|---|---|---|---|---|
+| NHL | 2023/24 | 1400 | 0 | 1400 | 0 | 88 | 288 |
+| NHL | 2024/25 | 1398 | 0 | 1398 | 1398 | 86 | 291 |
+| NHL | 2025/26 | 1394 | 698 | 1394 | 1394 | 82 | 348 |
+| NHL | 2026/27 | 268 | 249 | 268 | 268 | 0 | 61 |
+| HockeyAllsvenskan | 2023/24 | 409 | 0 | 408 | 0 | 45 | 90 |
+| HockeyAllsvenskan | 2024/25 | 415 | 0 | 414 | 0 | 51 | 103 |
+| HockeyAllsvenskan | 2025/26 | 410 | 159 | 364 | 0 | 46 | 88 |
+| HockeyAllsvenskan | 2026/27 | 126 | 118 | 125 | 0 | 0 | 29 |
 
 ## Trhy v kurzech
 
 | Liga | Trh | Zápasů | Knih |
 |---|---|---|---|
-| nhl | 1x2 | 946 | 3 |
-| nhl | btts | 256 | 2 |
+| nhl | 1x2 | 963 | 3 |
+| nhl | btts | 273 | 2 |
 | nhl | correct_score | 250 | 1 |
-| nhl | ml | 948 | 3 |
-| nhl | p1_1x2 | 256 | 2 |
-| nhl | p1_total | 840 | 3 |
-| nhl | puck_line | 904 | 3 |
-| nhl | total | 904 | 3 |
-| swe-allsvenskan | 1x2 | 263 | 5 |
-| swe-allsvenskan | btts | 118 | 4 |
-| swe-allsvenskan | correct_score | 118 | 3 |
-| swe-allsvenskan | ml | 277 | 5 |
-| swe-allsvenskan | p1_1x2 | 118 | 4 |
-| swe-allsvenskan | p1_total | 229 | 5 |
-| swe-allsvenskan | puck_line | 263 | 4 |
-| swe-allsvenskan | total | 263 | 4 |
+| nhl | ml | 965 | 3 |
+| nhl | p1_1x2 | 273 | 2 |
+| nhl | p1_total | 857 | 3 |
+| nhl | puck_line | 921 | 3 |
+| nhl | total | 921 | 3 |
+| swe-allsvenskan | 1x2 | 264 | 5 |
+| swe-allsvenskan | btts | 119 | 4 |
+| swe-allsvenskan | correct_score | 119 | 3 |
+| swe-allsvenskan | ml | 278 | 5 |
+| swe-allsvenskan | p1_1x2 | 119 | 4 |
+| swe-allsvenskan | p1_total | 230 | 5 |
+| swe-allsvenskan | puck_line | 264 | 4 |
+| swe-allsvenskan | total | 264 | 4 |
 
 ## Join klíče per zdroj
 
 | Liga | Zdroj | Fixtures | Spárováno | Podíl |
 |---|---|---|---|---|
-| nhl | nhl | 4550 | 4550 | 100,0 % |
-| nhl | oddspapi | 1076 | 1031 | 95,8 % |
-| swe-allsvenskan | oddspapi | 861 | 843 | 97,9 % |
+| cze-maxa | oddspapi | 6 | 0 | 0,0 % |
+| nhl | nhl | 4591 | 4591 | 100,0 % |
+| nhl | oddspapi | 1093 | 1048 | 95,9 % |
+| swe-allsvenskan | oddspapi | 862 | 844 | 97,9 % |
 
 ## Nespárované fixtures (max 200)
 
+- cze-maxa / oddspapi `id1500073561187611`: unknown team: PSG Berani Zlin - HC Frydek Mistek
+- cze-maxa / oddspapi `id1500073561187613`: unknown team: Horacka Trebic - Hockey Club Tabor
+- cze-maxa / oddspapi `id1500073561187615`: unknown team: HC Stadion Litomerice - Pirati Chomutov
+- cze-maxa / oddspapi `id1500073561187617`: unknown team: HC Slavia Prague - HC Zubr Prerov
+- cze-maxa / oddspapi `id1500073561187621`: unknown team: HC Banik Sokolov - Vhk Vsetin
+- cze-maxa / oddspapi `id1500073561187623`: unknown team: HC Dynamo Pardubice B - SC Kolin
 - nhl / oddspapi `id1500023462075780`: no game in window: Columbus Blue Jackets - Los Angeles Kings
 - nhl / oddspapi `id1500023470557988`: no game in window: Colorado Avalanche - Vegas Golden Knights
 - nhl / oddspapi `id1500023470557990`: no game in window: Vegas Golden Knights - Colorado Avalanche

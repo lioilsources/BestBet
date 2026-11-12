@@ -92,3 +92,89 @@ func (b *InsertOddsBatchBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }
+
+const upsertPlayerMatchStatsBatch = `-- name: UpsertPlayerMatchStatsBatch :batchexec
+INSERT INTO player_match_stats (
+    player_id, game_id, team_id, side, jersey, position, toi_seconds,
+    goals, assists, plus_minus, shots, pim, source
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+ON CONFLICT (player_id, game_id, source) DO UPDATE SET
+    team_id = EXCLUDED.team_id,
+    side = EXCLUDED.side,
+    jersey = EXCLUDED.jersey,
+    position = EXCLUDED.position,
+    toi_seconds = EXCLUDED.toi_seconds,
+    goals = EXCLUDED.goals,
+    assists = EXCLUDED.assists,
+    plus_minus = EXCLUDED.plus_minus,
+    shots = EXCLUDED.shots,
+    pim = EXCLUDED.pim
+`
+
+type UpsertPlayerMatchStatsBatchBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type UpsertPlayerMatchStatsBatchParams struct {
+	PlayerID   int32
+	GameID     int64
+	TeamID     int32
+	Side       string
+	Jersey     *int32
+	Position   *string
+	ToiSeconds *int32
+	Goals      *int32
+	Assists    *int32
+	PlusMinus  *int32
+	Shots      *int32
+	Pim        *int32
+	Source     string
+}
+
+// UpsertPlayerMatchStatsBatch writes one boxscore per round trip.
+func (q *Queries) UpsertPlayerMatchStatsBatch(ctx context.Context, arg []UpsertPlayerMatchStatsBatchParams) *UpsertPlayerMatchStatsBatchBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.PlayerID,
+			a.GameID,
+			a.TeamID,
+			a.Side,
+			a.Jersey,
+			a.Position,
+			a.ToiSeconds,
+			a.Goals,
+			a.Assists,
+			a.PlusMinus,
+			a.Shots,
+			a.Pim,
+			a.Source,
+		}
+		batch.Queue(upsertPlayerMatchStatsBatch, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &UpsertPlayerMatchStatsBatchBatchResults{br, len(arg), false}
+}
+
+func (b *UpsertPlayerMatchStatsBatchBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *UpsertPlayerMatchStatsBatchBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
