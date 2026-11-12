@@ -101,3 +101,32 @@ func TestParseSkaters(t *testing.T) {
 		t.Fatalf("future game: %v %v", empty, err)
 	}
 }
+
+func TestParseRoster(t *testing.T) {
+	b, err := os.ReadFile("testdata/pbp_pre_2026020301.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := ParseRoster(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.State != "PRE" || len(r.Home) != 20 || len(r.Away) != 20 || !Dressed(r.Home) || !Dressed(r.Away) {
+		t.Fatalf("roster %s %d %d", r.State, len(r.Home), len(r.Away))
+	}
+	goalies := 0
+	for _, p := range r.Home {
+		if p.Name == "" || p.PlayerID == 0 {
+			t.Fatalf("spot %+v", p)
+		}
+		if p.Position == "G" {
+			goalies++
+		}
+	}
+	if goalies != 2 {
+		t.Fatalf("home goalies %d", goalies)
+	}
+	if Dressed(make([]RosterSpot, 23)) {
+		t.Fatal("23 listed players are the roster, not the lineup")
+	}
+}

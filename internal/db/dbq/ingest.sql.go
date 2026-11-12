@@ -891,6 +891,52 @@ func (q *Queries) ListNHLFinishedGames(ctx context.Context, slug string) ([]List
 	return items, nil
 }
 
+const listNHLGamesStarting = `-- name: ListNHLGamesStarting :many
+SELECT id, nhl_id, home_team_id, away_team_id, start_at
+FROM games
+WHERE nhl_id IS NOT NULL AND status = 'scheduled' AND start_at >= $1 AND start_at < $2
+ORDER BY start_at
+`
+
+type ListNHLGamesStartingParams struct {
+	StartAt   pgtype.Timestamptz
+	StartAt_2 pgtype.Timestamptz
+}
+
+type ListNHLGamesStartingRow struct {
+	ID         int64
+	NhlID      *int64
+	HomeTeamID int32
+	AwayTeamID int32
+	StartAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ListNHLGamesStarting(ctx context.Context, arg ListNHLGamesStartingParams) ([]ListNHLGamesStartingRow, error) {
+	rows, err := q.db.Query(ctx, listNHLGamesStarting, arg.StartAt, arg.StartAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNHLGamesStartingRow
+	for rows.Next() {
+		var i ListNHLGamesStartingRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NhlID,
+			&i.HomeTeamID,
+			&i.AwayTeamID,
+			&i.StartAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlayerSources = `-- name: ListPlayerSources :many
 SELECT source_player_id, player_id FROM player_sources WHERE source = $1
 `

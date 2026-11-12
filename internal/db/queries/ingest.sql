@@ -267,3 +267,9 @@ ON CONFLICT (game_id, team_id, player_id) DO NOTHING;
 -- name: DeleteLineupExcept :exec
 DELETE FROM lineups
 WHERE game_id = $1 AND team_id = $2 AND NOT (player_id = ANY(sqlc.arg(keep)::integer[]));
+
+-- name: ListNHLGamesStarting :many
+SELECT id, nhl_id, home_team_id, away_team_id, start_at
+FROM games
+WHERE nhl_id IS NOT NULL AND status = 'scheduled' AND start_at >= $1 AND start_at < $2
+ORDER BY start_at;
