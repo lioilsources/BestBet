@@ -2,6 +2,12 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-12 (M3b L1: bruslaři z boxscore)
+
+- **`ingest-hockey nhl` ukládá i bruslaře** do `player_match_stats` (TOI, G, A, +/−, střely, PIM) a hráče přes `player_sources (nhl, playerId)`. Jméno je zkrácené, jak ho boxscore uvádí („S. Colangelo“); identitou je `playerId`.
+- **`line_no` zůstává prázdné:** boxscore lajny neuvádí a pořadí v něm není pořadí lajn.
+- **Zpětné doplnění 2024/25–2026/27 z HTTP cache:** 3 060 zápasů, 110 152 řádků, 1 108 hráčů, 23 nových requestů (jen nové dny sezony 2026/27). Pokrytí odehraných zápasů 100 %, 18 bruslařů na stranu (8 stran ze 6 120 mělo 17). Sezona 2023/24 se nedoplňuje, plán ji nechce.
+
 ## 2026-11-10 (M3: sestavy a zranění, rozhodnutí vlastníka)
 
 - **Appka ukáže i informace mimo kurzy: sestavy a zranění** (plán 03 §7). Zdroj jen veřejné NHL API: bruslaři z boxscore, potvrzená sestava ze stavu `PRE`, škrty z right-rail. Důvod absence API nemá, zůstává `unknown`. Scraping zpravodajství o zraněních se nedělá.
