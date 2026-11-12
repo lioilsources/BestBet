@@ -627,6 +627,48 @@ func (q *Queries) ListJournal(ctx context.Context, userKey string) ([]ListJourna
 	return items, nil
 }
 
+const listLineup = `-- name: ListLineup :many
+SELECT l.team_id, l.player_id, l.position, l.confirmed_at, p.name
+FROM lineups l
+JOIN players p ON p.id = l.player_id
+WHERE l.game_id = $1
+ORDER BY l.team_id, l.player_id
+`
+
+type ListLineupRow struct {
+	TeamID      int32
+	PlayerID    int32
+	Position    *string
+	ConfirmedAt pgtype.Timestamptz
+	Name        string
+}
+
+func (q *Queries) ListLineup(ctx context.Context, gameID int64) ([]ListLineupRow, error) {
+	rows, err := q.db.Query(ctx, listLineup, gameID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLineupRow
+	for rows.Next() {
+		var i ListLineupRow
+		if err := rows.Scan(
+			&i.TeamID,
+			&i.PlayerID,
+			&i.Position,
+			&i.ConfirmedAt,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const oddsHistory = `-- name: OddsHistory :many
 SELECT o.book, o.market, o.selection, o.line, o.price, o.captured_at, o.snapshot_kind
 FROM odds_snapshots o
@@ -663,6 +705,63 @@ func (q *Queries) OddsHistory(ctx context.Context, gameID *int64) ([]OddsHistory
 			&i.Price,
 			&i.CapturedAt,
 			&i.SnapshotKind,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const teamPlayerLines = `-- name: TeamPlayerLines :many
+SELECT g.id AS game_id, g.start_at, pm.player_id, pm.position, pm.toi_seconds,
+       pm.goals, pm.assists, p.name
+FROM player_match_stats pm
+JOIN games g ON g.id = pm.game_id
+JOIN players p ON p.id = pm.player_id
+WHERE pm.team_id = $1 AND g.season = $2 AND g.start_at < $3 AND pm.source = 'nhl'
+ORDER BY g.start_at, pm.player_id
+`
+
+type TeamPlayerLinesParams struct {
+	TeamID  int32
+	Season  int32
+	StartAt pgtype.Timestamptz
+}
+
+type TeamPlayerLinesRow struct {
+	GameID     int64
+	StartAt    pgtype.Timestamptz
+	PlayerID   int32
+	Position   *string
+	ToiSeconds *int32
+	Goals      *int32
+	Assists    *int32
+	Name       string
+}
+
+// A team's skater lines of one season before a moment (absences, plan 04 L2).
+func (q *Queries) TeamPlayerLines(ctx context.Context, arg TeamPlayerLinesParams) ([]TeamPlayerLinesRow, error) {
+	rows, err := q.db.Query(ctx, teamPlayerLines, arg.TeamID, arg.Season, arg.StartAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TeamPlayerLinesRow
+	for rows.Next() {
+		var i TeamPlayerLinesRow
+		if err := rows.Scan(
+			&i.GameID,
+			&i.StartAt,
+			&i.PlayerID,
+			&i.Position,
+			&i.ToiSeconds,
+			&i.Goals,
+			&i.Assists,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}

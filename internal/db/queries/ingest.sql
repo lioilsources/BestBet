@@ -258,3 +258,12 @@ ON CONFLICT (player_id, game_id, source) DO UPDATE SET
     plus_minus = EXCLUDED.plus_minus,
     shots = EXCLUDED.shots,
     pim = EXCLUDED.pim;
+
+-- name: InsertLineupPlayer :exec
+INSERT INTO lineups (game_id, team_id, player_id, position, confirmed_at, source)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (game_id, team_id, player_id) DO NOTHING;
+
+-- name: DeleteLineupExcept :exec
+DELETE FROM lineups
+WHERE game_id = $1 AND team_id = $2 AND NOT (player_id = ANY(sqlc.arg(keep)::integer[]));

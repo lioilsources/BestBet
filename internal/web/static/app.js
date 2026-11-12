@@ -86,6 +86,38 @@ function grid(g) {
   return `<table class="g"><tr><th></th><th>1</th><th>X</th><th>2</th></tr>${rows.join("")}</table>`;
 }
 
+const LINEUP_STATUS = { estimate: "odhad z posledního zápasu", confirmed: "potvrzená sestava", unknown: "málo zápasů v sezoně" };
+
+function lineupTag(g) {
+  if (!g.lineup) return "";
+  const t = [["home", g.home_name], ["away", g.away_name]]
+    .filter(([s]) => g.lineup[s].key_missing > 0)
+    .map(([s, n]) => `${esc(n)}: chybí ${g.lineup[s].key_missing} klíčov${g.lineup[s].key_missing === 1 ? "ý" : "í"}`);
+  return t.length ? `<div class="nohint">${t.join(" · ")}</div>` : "";
+}
+
+function lineupTeam(name, t) {
+  const status = `${LINEUP_STATUS[t.status] || t.status}${t.confirmed_at ? `, ${fmtTime(t.confirmed_at)}` : ""}`;
+  if (t.status === "unknown") return `<div class="card"><div class="teams">${esc(name)}</div><div class="sub">${status}</div></div>`;
+  const row = (p, extra) => `<tr><td class="l">${esc(p.name || "#" + p.player_id)}${p.key ? ' <span class="tag">klíčový</span>' : ""}</td>
+    <td>${esc(p.position)}</td><td>${num(p.toi_min, 1)}</td><td>${num(p.points_per_game)}</td><td>${extra}</td></tr>`;
+  const miss = t.missing.map((p) => row(p, p.missed ? `${p.missed} záp.` : "–")).join("");
+  const ret = t.returning.map((p) => row(p, `po ${p.missed} záp.`)).join("");
+  return `<div class="card"><div class="teams">${esc(name)}</div>
+    <div class="sub">${status} · chybí ${pct(t.share, 0)} minut pravidelných hráčů (${t.regulars} pravidelných, okno ${t.window} zápasů)</div>
+    ${miss ? `<table class="g"><tr><th>Chybí</th><th>Poz.</th><th>TOI</th><th>Body/z.</th><th>Vynechal</th></tr>${miss}</table>` : '<div class="sub">Všichni pravidelní hrají.</div>'}
+    ${ret ? `<table class="g"><tr><th>Vrací se</th><th>Poz.</th><th>TOI</th><th>Body/z.</th><th>Absence</th></tr>${ret}</table>` : ""}</div>`;
+}
+
+function lineupBlock(g) {
+  if (!g.lineup) return "";
+  const move = g.sharp && g.sharp_open
+    ? `Ostrý trh od otevření: domácí ${pct(g.sharp_open[0], 0)} → ${pct(g.sharp[0], 0)}, hosté ${pct(g.sharp_open[2], 0)} → ${pct(g.sharp[2], 0)}.`
+    : "Pohyb ostrého trhu: chybí.";
+  return `<h2>Sestava</h2><div class="cards">${lineupTeam(g.home_name, g.lineup.home)}${lineupTeam(g.away_name, g.lineup.away)}</div>
+    <p class="sub">${move} Pravidelný hráč = ≥ 60 % z posledních 20 zápasů a TOI nad mediánem týmu; klíčový = horní třetina TOI. Důvod absence (zranění, trest, škrt) NHL API neuvádí. Absence zatím nevstupují do modelu ani do hintu.</p>`;
+}
+
 function card(g) {
   const started = new Date(g.start_at) <= Date.now();
   const score = g.final ? `<span class="score">${g.final.home}:${g.final.away}</span>` : "";
@@ -94,6 +126,7 @@ function card(g) {
     <div class="teams">${score}${esc(g.home_name)} <span class="vs">–</span> ${esc(g.away_name)}</div>
     ${grid(g)}
     ${hintBox(g)}
+    ${lineupTag(g)}
   </a>`;
 }
 
@@ -180,6 +213,7 @@ async function renderGame(id) {
     <h1>${esc(g.home_name)} – ${esc(g.away_name)}</h1>
     <p class="sub">${esc(g.league_name)} · ${fmtTime(g.start_at)}${g.final ? ` · konec ${g.final.home}:${g.final.away}` : ""}</p>
     ${grid(g)}${hintBox(g)}
+    ${lineupBlock(g)}
     <h2>Pohyb trhu: férová pravděpodobnost</h2>
     <div class="seg" id="seg">${SEL.map((s, i) => `<button data-i="${i}" class="${i === 0 ? "on" : ""}">${SEL_LABEL[s]}</button>`).join("")}</div>
     <div class="chart" id="chart">${lineChart(d.history, 0)}</div>

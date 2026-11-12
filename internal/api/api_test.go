@@ -14,6 +14,7 @@ import (
 	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/edge"
 	"github.com/lioilsources/BestBet/internal/hint"
+	"github.com/lioilsources/BestBet/internal/lineup"
 	"github.com/lioilsources/BestBet/internal/live"
 	"github.com/lioilsources/BestBet/internal/model/layers"
 	"github.com/lioilsources/BestBet/internal/model/periods"
@@ -159,6 +160,9 @@ func (a fakeApp) OddsHistory(_ context.Context, id int64) ([]canon.OddsQuote, er
 }
 func (a fakeApp) Hints(context.Context, string) ([]hint.Entry, error) { return nil, nil }
 func (a fakeApp) Coverage(context.Context) (any, error)               { return map[string]int{"games": 1}, nil }
+func (a fakeApp) Lineups(context.Context, canon.GameInfo) (*lineup.Game, error) {
+	return &lineup.Game{Home: lineup.Team{Status: lineup.Estimate, KeyMissing: 1}}, nil
+}
 
 func TestApp(t *testing.T) {
 	s, f, target := setup(t)
