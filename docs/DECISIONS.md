@@ -2,6 +2,13 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-13 (M3b L4: výsledek, brána B2 neprošla)
+
+- **Report `docs/RESULTS_M3B_ABSENCE_NHL.md`.** 2 892 zápasů základní části se sestavou, u 2 670 jsou absence spočítané.
+- **H7 (n = 176, zápasy s t24h i closing Pinnaclu):** potvrzená sestava vysvětluje část pohybu trhu k uzavření, β = +0,25 (+0,12 až +0,40), R² 0,064. Odhad z posledního zápasu má slabší, ale také kladné β (+0,16, interval těsně nad nulou), takže trh známé absence k t24h ještě úplně nezapracoval. Nová informace z potvrzené sestavy sama: β +0,19, interval zasahuje nulu.
+- **F-abs:** žádná varianta nezlepší trh jako prior. Na opening a t24h absence log-loss mírně zhoršují (+0,1 až +0,2 %), na t1h je Δ záporné (−0,5 % a −0,25 %), ale s širokým intervalem přes nulu (n = 345). Nad modelem (`periods-v1` + goalie + b2b) taky nic.
+- **Verdikt B2: neprošlo.** Absence zůstávají jen informací v UI (blok Sestava), model ani hint se nemění. H7 podporuje to, že je smysl je ukazovat: trh se po nich hýbe.
+
 ## 2026-11-13 (M3b L4: konfigurace pevně předem, zapsáno před prvním během)
 
 - **Vstup:** NHL, základní část, sestavy = skuteční bruslaři zápasu z boxscore (`player_match_stats`). `features.AbsenceBefore` s prahy z plánu 04 L2. Strana bez ≥ 5 dřívějších zápasů sezony má x = 0.

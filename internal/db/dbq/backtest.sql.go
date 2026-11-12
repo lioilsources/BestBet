@@ -210,3 +210,47 @@ func (q *Queries) ListLeagueOdds(ctx context.Context, slug string) ([]ListLeague
 	}
 	return items, nil
 }
+
+const listLeagueSkaterLines = `-- name: ListLeagueSkaterLines :many
+SELECT pm.game_id, pm.side, pm.player_id, pm.position, pm.toi_seconds
+FROM player_match_stats pm
+JOIN games g ON g.id = pm.game_id
+JOIN leagues l ON l.id = g.league_id
+WHERE l.slug = $1
+ORDER BY pm.game_id, pm.side, pm.player_id
+`
+
+type ListLeagueSkaterLinesRow struct {
+	GameID     int64
+	Side       string
+	PlayerID   int32
+	Position   *string
+	ToiSeconds *int32
+}
+
+// Every skater line of a league (absences backtest, plan 04 L4).
+func (q *Queries) ListLeagueSkaterLines(ctx context.Context, slug string) ([]ListLeagueSkaterLinesRow, error) {
+	rows, err := q.db.Query(ctx, listLeagueSkaterLines, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLeagueSkaterLinesRow
+	for rows.Next() {
+		var i ListLeagueSkaterLinesRow
+		if err := rows.Scan(
+			&i.GameID,
+			&i.Side,
+			&i.PlayerID,
+			&i.Position,
+			&i.ToiSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

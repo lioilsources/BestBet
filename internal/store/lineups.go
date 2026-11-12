@@ -115,3 +115,34 @@ func (s *Store) ReplaceLineup(ctx context.Context, gameID int64, team int32, sta
 	}
 	return nil
 }
+
+// AttachLineups fills Match.Lineups from the stored skater lines of a league.
+func (s *Store) AttachLineups(ctx context.Context, slug string, ms []canon.Match) error {
+	rows, err := s.Q.ListLeagueSkaterLines(ctx, slug)
+	if err != nil {
+		return fmt.Errorf("skater lines: %w", err)
+	}
+	by := map[int64]map[canon.Side][]canon.PlayerMinutes{}
+	for _, r := range rows {
+		if by[r.GameID] == nil {
+			by[r.GameID] = map[canon.Side][]canon.PlayerMinutes{}
+		}
+		pm := canon.PlayerMinutes{PlayerID: r.PlayerID}
+		if r.Position != nil {
+			pm.Position = *r.Position
+		}
+		if r.ToiSeconds != nil {
+			pm.TOISeconds = int(*r.ToiSeconds)
+		}
+		side := canon.Side(r.Side)
+		by[r.GameID][side] = append(by[r.GameID][side], pm)
+	}
+	for i := range ms {
+		for _, side := range []canon.Side{canon.Home, canon.Away} {
+			if ps := by[ms[i].ID][side]; len(ps) > 0 {
+				ms[i].Lineups = append(ms[i].Lineups, canon.Lineup{Side: side, Players: ps})
+			}
+		}
+	}
+	return nil
+}
