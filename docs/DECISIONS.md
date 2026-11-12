@@ -2,6 +2,12 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-10 (M3: sestavy a zranění, rozhodnutí vlastníka)
+
+- **Appka ukáže i informace mimo kurzy: sestavy a zranění** (plán 03 §7). Zdroj jen veřejné NHL API: bruslaři z boxscore, potvrzená sestava ze stavu `PRE`, škrty z right-rail. Důvod absence API nemá, zůstává `unknown`. Scraping zpravodajství o zraněních se nedělá.
+- **Absence nemění hint `market-value-v1`.** Do UI jde hned, do modelu a hintu až po H7 a F-abs (plán 03 §7.3).
+- **PR #2 a #3 mergnuty** na pokyn vlastníka 2026-11-10.
+
 ## 2026-11-08 (M3: hint appka, rozhodnutí vlastníka)
 
 - **Vlastník otevírá M3, i když G1 a A1 neprošly.** Appka je ukázka dat, práce s nimi a evaluace. Nesází, nepřijímá peníze, nemá affiliate. Plán: `Prompts/03-PLAN-M3-appka-hint.md`.
