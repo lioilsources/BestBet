@@ -110,3 +110,12 @@ FROM predictions
 WHERE kind = 'live'
 GROUP BY model_version
 ORDER BY model_version;
+
+-- name: CoveragePlayers :many
+SELECT l.slug, g.season, count(DISTINCT pm.game_id) AS games, count(*) AS lines,
+       count(DISTINCT pm.player_id) AS players
+FROM player_match_stats pm
+JOIN games g ON g.id = pm.game_id
+JOIN leagues l ON l.id = g.league_id
+GROUP BY l.slug, g.season
+ORDER BY l.slug, g.season;

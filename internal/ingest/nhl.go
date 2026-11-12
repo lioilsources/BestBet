@@ -17,11 +17,15 @@ import (
 )
 
 // NHL walks one season day by day through the public score feed (one request
-// per day) and, for finished games, the boxscore goalies. Days older than two
+// per day) and, for finished games, the boxscore goalies and skaters. Days older than two
 // days are cached forever, recent ones for an hour.
 func NHL(ctx context.Context, e Env, hc *httpcache.Client, l config.League, row dbq.League, season int, withGoalies bool) (Stats, error) {
 	var st Stats
 	teams, err := e.Store.LoadTeams(ctx, row.ID, "nhl", e.aliases("nhl", l.Slug))
+	if err != nil {
+		return st, err
+	}
+	players, err := e.Store.LoadPlayers(ctx, "nhl")
 	if err != nil {
 		return st, err
 	}
@@ -85,16 +89,17 @@ func NHL(ctx context.Context, e Env, hc *httpcache.Client, l config.League, row 
 			if !withGoalies || in.Status != "finished" {
 				continue
 			}
-			n, err := nhlGoalies(ctx, e, hc, gameID, home, away, g.ID)
+			n, k, err := nhlBoxscore(ctx, e, hc, players, gameID, home, away, g.ID)
 			if errors.Is(err, httpcache.ErrBudget) {
 				return st, err
 			}
 			if err != nil {
 				st.Failed++
-				slog.Warn("nhl goalies", "game", g.ID, "err", err)
+				slog.Warn("nhl boxscore", "game", g.ID, "err", err)
 				continue
 			}
 			st.Goalies += n
+			st.Skaters += k
 		}
 	}
 	if len(teams.Created) > 0 {
@@ -103,19 +108,21 @@ func NHL(ctx context.Context, e Env, hc *httpcache.Client, l config.League, row 
 	if _, err := e.Store.DeriveSeries(ctx, row, int32(season)); err != nil {
 		return st, err
 	}
-	slog.Info("nhl", "league", l.Slug, "season", season, "stats", st.String())
+	slog.Info("nhl", "league", l.Slug, "season", season, "stats", st.String(), "players_new", players.New, "requests", hc.Used())
 	return st, nil
 }
 
-func nhlGoalies(ctx context.Context, e Env, hc *httpcache.Client, gameID int64, home, away int32, nhlID int64) (int, error) {
+// nhlBoxscore stores the goalies and skaters of one finished game from its
+// boxscore (cached forever once the game is final).
+func nhlBoxscore(ctx context.Context, e Env, hc *httpcache.Client, pl *store.Players, gameID int64, home, away int32, nhlID int64) (goalies, skaters int, err error) {
 	u := fmt.Sprintf("%s/gamecenter/%d/boxscore", nhl.Base, nhlID)
 	b, _, err := hc.Get(ctx, httpcache.Request{URL: u, Key: u})
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	gs, err := nhl.ParseBoxscore(b)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	for _, g := range gs {
 		team := home
@@ -133,10 +140,38 @@ func nhlGoalies(ctx context.Context, e Env, hc *httpcache.Client, gameID int64, 
 			ShotsAgainst: &sa, Saves: &sv, GoalsAgainst: &ga, SavePct: pct, ToiSeconds: &toi,
 			ConfirmStatus: "CONFIRMED", Source: "nhl",
 		}); err != nil {
-			return 0, fmt.Errorf("goalie: %w", err)
+			return 0, 0, fmt.Errorf("goalie: %w", err)
 		}
 	}
-	return len(gs), nil
+	ss, err := nhl.ParseSkaters(b)
+	if err != nil {
+		return len(gs), 0, err
+	}
+	rows := make([]dbq.UpsertPlayerMatchStatsBatchParams, 0, len(ss))
+	for _, x := range ss {
+		id, err := pl.Resolve(ctx, strconv.Itoa(x.PlayerID), x.Name, x.Position)
+		if err != nil {
+			return len(gs), 0, err
+		}
+		team := home
+		if x.Side == "away" {
+			team = away
+		}
+		rows = append(rows, dbq.UpsertPlayerMatchStatsBatchParams{
+			PlayerID: id, GameID: gameID, TeamID: team, Side: x.Side, Jersey: i32(x.Jersey), Position: &x.Position,
+			ToiSeconds: i32(x.TOISeconds), Goals: i32(x.Goals), Assists: i32(x.Assists), PlusMinus: i32(x.PlusMinus),
+			Shots: i32(x.Shots), Pim: i32(x.PIM), Source: "nhl",
+		})
+	}
+	if err := e.Store.UpsertPlayerLines(ctx, rows); err != nil {
+		return len(gs), 0, err
+	}
+	return len(gs), len(rows), nil
+}
+
+func i32(v int) *int32 {
+	x := int32(v)
+	return &x
 }
 
 func storeInput(leagueID int32, season int, g nhl.Game, phase string, home, away int32) store.GameInput {

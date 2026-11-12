@@ -573,6 +573,48 @@ func (q *Queries) InsertOdds(ctx context.Context, arg InsertOddsParams) error {
 	return err
 }
 
+const insertPlayer = `-- name: InsertPlayer :one
+INSERT INTO players (name, name_norm, position, created_by)
+VALUES ($1, $2, $3, $4)
+RETURNING id
+`
+
+type InsertPlayerParams struct {
+	Name      string
+	NameNorm  string
+	Position  *string
+	CreatedBy string
+}
+
+func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) (int32, error) {
+	row := q.db.QueryRow(ctx, insertPlayer,
+		arg.Name,
+		arg.NameNorm,
+		arg.Position,
+		arg.CreatedBy,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertPlayerSource = `-- name: InsertPlayerSource :exec
+INSERT INTO player_sources (source, source_player_id, player_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (source, source_player_id) DO NOTHING
+`
+
+type InsertPlayerSourceParams struct {
+	Source         string
+	SourcePlayerID string
+	PlayerID       int32
+}
+
+func (q *Queries) InsertPlayerSource(ctx context.Context, arg InsertPlayerSourceParams) error {
+	_, err := q.db.Exec(ctx, insertPlayerSource, arg.Source, arg.SourcePlayerID, arg.PlayerID)
+	return err
+}
+
 const insertTeam = `-- name: InsertTeam :one
 INSERT INTO teams (league_id, name, name_norm, apihockey_id, created_by)
 VALUES ($1, $2, $3, $4, $5)
@@ -796,6 +838,35 @@ func (q *Queries) ListNHLFinishedGames(ctx context.Context, slug string) ([]List
 			&i.AwayTeamID,
 			&i.StartAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlayerSources = `-- name: ListPlayerSources :many
+SELECT source_player_id, player_id FROM player_sources WHERE source = $1
+`
+
+type ListPlayerSourcesRow struct {
+	SourcePlayerID string
+	PlayerID       int32
+}
+
+func (q *Queries) ListPlayerSources(ctx context.Context, source string) ([]ListPlayerSourcesRow, error) {
+	rows, err := q.db.Query(ctx, listPlayerSources, source)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlayerSourcesRow
+	for rows.Next() {
+		var i ListPlayerSourcesRow
+		if err := rows.Scan(&i.SourcePlayerID, &i.PlayerID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
