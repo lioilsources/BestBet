@@ -2,6 +2,24 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-13 (M3b L4: výsledek, brána B2 neprošla)
+
+- **Report `docs/RESULTS_M3B_ABSENCE_NHL.md`.** 2 892 zápasů základní části se sestavou, u 2 670 jsou absence spočítané.
+- **H7 (n = 176, zápasy s t24h i closing Pinnaclu):** potvrzená sestava vysvětluje část pohybu trhu k uzavření, β = +0,25 (+0,12 až +0,40), R² 0,064. Odhad z posledního zápasu má slabší, ale také kladné β (+0,16, interval těsně nad nulou), takže trh známé absence k t24h ještě úplně nezapracoval. Nová informace z potvrzené sestavy sama: β +0,19, interval zasahuje nulu.
+- **F-abs:** žádná varianta nezlepší trh jako prior. Na opening a t24h absence log-loss mírně zhoršují (+0,1 až +0,2 %), na t1h je Δ záporné (−0,5 % a −0,25 %), ale s širokým intervalem přes nulu (n = 345). Nad modelem (`periods-v1` + goalie + b2b) taky nic.
+- **Verdikt B2: neprošlo.** Absence zůstávají jen informací v UI (blok Sestava), model ani hint se nemění. H7 podporuje to, že je smysl je ukazovat: trh se po nich hýbe.
+
+## 2026-11-13 (M3b L4: konfigurace pevně předem, zapsáno před prvním během)
+
+- **Vstup:** NHL, základní část, sestavy = skuteční bruslaři zápasu z boxscore (`player_match_stats`). `features.AbsenceBefore` s prahy z plánu 04 L2. Strana bez ≥ 5 dřívějších zápasů sezony má x = 0.
+- **Proměnné:** `abs-est` = share_hosté − share_domácí, kde sestava = poslední zápas týmu (známo kdykoli předem). `abs-conf` = totéž se skutečnou sestavou zápasu. `abs-new` = abs-conf − abs-est (to, co přinese až potvrzená sestava).
+- **H7:** y = logit q_close − logit q_t24h, kde q = p_dom / (p_dom + p_hosté) ze Shina celého 1X2 Pinnaclu. OLS y = a + β·x zvlášť pro abs-est, abs-conf, abs-new. Hlásí se β, 95% interval (bootstrap po zápasech, 2 000 opakování, pevné semínko), R², n. Jen zápasy, kde má Pinnacle t24h i closing. Všechny sezony s kurzy (H7 je popis, ne fit modelu).
+- **F-abs:** stejný walk jako F1 (`marketprior.Walk`, týdenní okna, ridge 1, min. 100 aktivních zápasů, min. 100 tréninkových). Hodnotí se jen odložené sezony (od 2025/26). Dvě priory:
+  - trh: Shin snímku opening, t24h, t1h, closing (Pinnacle, jinak medián knih), varianty trh sám, +abs-est, +abs-conf;
+  - model: `periods-v1` jako prior s vrstvami goalie + b2b, varianty bez absence, +abs-est, +abs-conf. Δ proti variantě bez absence.
+- **BH (q = 0,10)** přes všechny varianty s absencí v reportu kromě snímku closing (ten je diagnostika jako v F1).
+- **Brána B2:** abs-est na opening, t24h nebo t1h, nebo abs-conf na t1h (jen tam může být potvrzená sestava známa; na opening a t24h je abs-conf zpětný pohled jako H3 u brankáře), proti **trhu jako prioru**: Δ log-loss < 0 s 95% intervalem pod nulou a průchod BH. Jinak absence zůstává jen informací v UI.
+
 ## 2026-11-13 (M3b L0: zdroj sestav NHL, brána B0)
 
 - **Sonda 2026-11-12/13:** 10 zápasů NHL, `boxscore`, `landing`, `right-rail` a `play-by-play` každých 10 min od −120 min do konce.

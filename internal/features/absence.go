@@ -236,3 +236,50 @@ func (g TeamGame) Lineup() []int32 {
 	}
 	return ids
 }
+
+// AbsenceShares is one side's missing share of regular ice time before a game.
+type AbsenceShares struct {
+	Known     bool
+	Estimate  float64 // lineup = the team's previous game
+	Confirmed float64 // lineup = who actually dressed (hindsight in a backtest)
+}
+
+// AbsenceTimeline computes both shares for every side of every match that has
+// a lineup. Only earlier games feed the regulars, so it is causal; the
+// confirmed share uses the game's own lineup, known about an hour before.
+func AbsenceTimeline(matches []canon.Match) map[int64]map[canon.Side]AbsenceShares {
+	ms := append([]canon.Match(nil), matches...)
+	canon.SortMatches(ms)
+	hist := map[int32][]TeamGame{}
+	out := map[int64]map[canon.Side]AbsenceShares{}
+	for _, m := range ms {
+		cur := map[canon.Side]TeamGame{}
+		for _, l := range m.Lineups {
+			if len(l.Players) > 0 {
+				cur[l.Side] = TeamGame{StartAt: m.StartAt, Season: m.Season, Players: l.Players}
+			}
+		}
+		for side, team := range map[canon.Side]int32{canon.Home: m.HomeTeam, canon.Away: m.AwayTeam} {
+			g, ok := cur[side]
+			prev := hist[team]
+			if !ok || len(prev) == 0 {
+				continue
+			}
+			est := AbsenceBefore(prev, m.Season, prev[len(prev)-1].Lineup())
+			conf := AbsenceBefore(prev, m.Season, g.Lineup())
+			if !est.Known {
+				continue
+			}
+			if out[m.ID] == nil {
+				out[m.ID] = map[canon.Side]AbsenceShares{}
+			}
+			out[m.ID][side] = AbsenceShares{Known: true, Estimate: est.Share, Confirmed: conf.Share}
+		}
+		for side, team := range map[canon.Side]int32{canon.Home: m.HomeTeam, canon.Away: m.AwayTeam} {
+			if g, ok := cur[side]; ok {
+				hist[team] = append(hist[team], g)
+			}
+		}
+	}
+	return out
+}
