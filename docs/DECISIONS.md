@@ -2,6 +2,18 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-13 (M3b L0: zdroj sestav NHL, brána B0)
+
+- **Sonda 2026-11-12/13:** 10 zápasů NHL, `boxscore`, `landing`, `right-rail` a `play-by-play` každých 10 min od −120 min do konce.
+- **Boxscore** nemá hráče až do začátku zápasu. Sestava před zápasem je jen v `play-by-play` `rosterSpots`.
+- **`rosterSpots` mají dvě fáze:**
+  - asi 90–115 min předem seznam dostupných hráčů, 21–23 na tým bez hráčů na IR; finální sestava byla vždy jeho podmnožina (v 10 z 10 zápasů nikdo nechyběl);
+  - potom se zúží na přesnou sestavu (18 bruslařů + 2 brankáři), v 10 z 10 zápasů bez jediného rozdílu proti finálnímu boxscore.
+- **Kdy se zúží (min před plánovaným začátkem, přesnost ±10 min):** 54, 33, 26, 24, 14, 13, 6, 5, 5, 5; medián 13,5.
+- **Brána B0 (sestava ≥ 20 min předem) neprošla:** jen 4 z 10 zápasů.
+- **Rozhodnutí (vlastník 2026-11-13: „nezastavuj se u každé gate“):** kromě potvrzené sestavy se ukládá i seznam dostupných hráčů (`lineups.status = available`). Chybějící pravidelní hráči jsou z něj jistí asi 1,5 h předem, což je lepší než odhad z posledního zápasu. Appka ukazuje potvrzenou sestavu, jinak dostupné, jinak odhad. Jde jen o UI, model ani hint se nemění (B2 neprošla).
+- **`player_absence_games` se neplní:** nic ho nečte; absence se počítají z `player_match_stats` a `lineups`.
+
 ## 2026-11-12 (M3b L1: bruslaři z boxscore)
 
 - **`ingest-hockey nhl` ukládá i bruslaře** do `player_match_stats` (TOI, G, A, +/−, střely, PIM) a hráče přes `player_sources (nhl, playerId)`. Jméno je zkrácené, jak ho boxscore uvádí („S. Colangelo“); identitou je `playerId`.
