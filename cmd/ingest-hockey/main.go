@@ -6,6 +6,7 @@
 //	ingest-hockey games    [-league s] [-season y]
 //	ingest-hockey swehockey [-league s] [-season y] [-goalies=true]
 //	ingest-hockey nhl      [-season y] [-goalies=true]  # public NHL API, no key
+//	ingest-hockey nhl-lineups                            # published lineups of games starting within 90 min
 //	ingest-hockey nhl-coaches                  # head coach per finished NHL game -> tenures
 //	ingest-hockey odds     [-league s]         # one API-HOCKEY odds snapshot now
 //	ingest-hockey snapshot                     # cron: odds for games entering T-24h/T-1h/closing
@@ -180,6 +181,10 @@ func run(ctx context.Context, cmd string, args []string) error {
 			}
 		}
 		return nil
+	case "nhl-lineups":
+		hc := &httpcache.Client{Dir: cacheDir + "/nhl", MinGap: time.Second, UserAgent: userAgent}
+		_, _, err := ingest.NHLLineups(ctx, env, hc)
+		return err
 	case "nhl-coaches":
 		hc := &httpcache.Client{Dir: cacheDir + "/nhl", MinGap: time.Second, UserAgent: userAgent}
 		row, ok := rows["nhl"]

@@ -14,6 +14,7 @@ import (
 
 	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/hint"
+	"github.com/lioilsources/BestBet/internal/lineup"
 )
 
 // AppSource is what the app endpoints (plan 03) read on top of Source.
@@ -21,6 +22,9 @@ type AppSource interface {
 	OddsHistory(ctx context.Context, gameID int64) ([]canon.OddsQuote, error)
 	Hints(ctx context.Context, rule string) ([]hint.Entry, error)
 	Coverage(ctx context.Context) (any, error) // slow: full-table counts
+	// Lineups: missing regulars of both sides (estimate or published lineup);
+	// nil when the league has no player data.
+	Lineups(ctx context.Context, g canon.GameInfo) (*lineup.Game, error)
 }
 
 // App holds the app endpoints' configuration.
@@ -74,6 +78,7 @@ type BoardRow struct {
 	Best         map[string]BestPrice `json:"best,omitempty"`
 	Hint         *hint.Hint           `json:"hint,omitempty"`     // the rule on the latest prices
 	Recorded     *hint.Entry          `json:"recorded,omitempty"` // first qualifying price (ledger)
+	Lineup       *lineup.Game         `json:"lineup,omitempty"`   // upcoming games only
 }
 
 func (s *Server) boardRow(ctx context.Context, g canon.GameInfo, recorded map[int64]hint.Entry) (BoardRow, []canon.OddsQuote, error) {
@@ -89,6 +94,11 @@ func (s *Server) boardRow(ctx context.Context, g canon.GameInfo, recorded map[in
 	hist, err := s.App.Src.OddsHistory(ctx, g.ID)
 	if err != nil {
 		return row, nil, err
+	}
+	if g.Status == "scheduled" {
+		if row.Lineup, err = s.App.Src.Lineups(ctx, g); err != nil {
+			return row, nil, err
+		}
 	}
 	latest := hint.Books1X2(hist)
 	if f, ok := hint.Fair(latest[s.App.Rule.Sharp]); ok {
