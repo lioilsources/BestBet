@@ -18,9 +18,10 @@ import (
 // LineupWindow is how far ahead nhl-lineups looks for games (plan 04 L2).
 const LineupWindow = 90 * time.Minute
 
-// NHLLineups polls play-by-play of NHL games starting within LineupWindow and
-// stores a side's lineup once its rosterSpots narrowed to the dressed players
-// (plan 04 L0). No game in the window means no request.
+// NHLLineups polls play-by-play of NHL games starting within LineupWindow.
+// rosterSpots first list the available players (stored as available) and
+// narrow to the dressed lineup minutes before the start (stored as
+// confirmed; plan 04 L0). No game in the window means no request.
 func NHLLineups(ctx context.Context, e Env, hc *httpcache.Client) (games, stored int, err error) {
 	now := e.Now()
 	rows, err := e.Store.Q.ListNHLGamesStarting(ctx, dbq.ListNHLGamesStartingParams{
@@ -54,7 +55,11 @@ func NHLLineups(ctx context.Context, e Env, hc *httpcache.Client) (games, stored
 			team  int32
 			spots []nhl.RosterSpot
 		}{{g.HomeTeamID, r.Home}, {g.AwayTeamID, r.Away}} {
-			if !nhl.Dressed(side.spots) {
+			status := store.LineupAvailable
+			switch {
+			case nhl.Dressed(side.spots):
+				status = store.LineupConfirmed
+			case len(side.spots) == 0:
 				continue
 			}
 			ps := make([]store.LineupPlayer, 0, len(side.spots))
@@ -65,7 +70,7 @@ func NHLLineups(ctx context.Context, e Env, hc *httpcache.Client) (games, stored
 				}
 				ps = append(ps, store.LineupPlayer{PlayerID: id, Position: sp.Position})
 			}
-			if err := e.Store.ReplaceLineup(ctx, g.ID, side.team, ps, now, "nhl"); err != nil {
+			if err := e.Store.ReplaceLineup(ctx, g.ID, side.team, status, ps, now, "nhl"); err != nil {
 				return games, stored, err
 			}
 			stored++

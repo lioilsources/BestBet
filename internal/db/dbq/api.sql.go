@@ -628,15 +628,16 @@ func (q *Queries) ListJournal(ctx context.Context, userKey string) ([]ListJourna
 }
 
 const listLineup = `-- name: ListLineup :many
-SELECT l.team_id, l.player_id, l.position, l.confirmed_at, p.name
+SELECT l.team_id, l.status, l.player_id, l.position, l.confirmed_at, p.name
 FROM lineups l
 JOIN players p ON p.id = l.player_id
 WHERE l.game_id = $1
-ORDER BY l.team_id, l.player_id
+ORDER BY l.team_id, l.status, l.player_id
 `
 
 type ListLineupRow struct {
 	TeamID      int32
+	Status      string
 	PlayerID    int32
 	Position    *string
 	ConfirmedAt pgtype.Timestamptz
@@ -654,6 +655,7 @@ func (q *Queries) ListLineup(ctx context.Context, gameID int64) ([]ListLineupRow
 		var i ListLineupRow
 		if err := rows.Scan(
 			&i.TeamID,
+			&i.Status,
 			&i.PlayerID,
 			&i.Position,
 			&i.ConfirmedAt,

@@ -60,12 +60,11 @@ func (s source) Lineups(ctx context.Context, g canon.GameInfo) (*lineup.Game, er
 				in[id] = lineup.Info{Name: n}
 			}
 		}
-		var conf []int32
-		var at time.Time
-		if l, ok := pub[team]; ok {
-			conf, at = l.Players, l.ConfirmedAt
+		lists := map[string]lineup.Published{}
+		for status, l := range pub[team] {
+			lists[status] = lineup.Published{Players: l.Players, At: l.ConfirmedAt}
 		}
-		return lineup.Build(prev, in, g.Season, conf, at), len(prev) > 0, nil
+		return lineup.Build(prev, in, g.Season, lists), len(prev) > 0, nil
 	}
 	h, okH, err := side(g.HomeTeam)
 	if err != nil {

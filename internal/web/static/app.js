@@ -86,7 +86,7 @@ function grid(g) {
   return `<table class="g"><tr><th></th><th>1</th><th>X</th><th>2</th></tr>${rows.join("")}</table>`;
 }
 
-const LINEUP_STATUS = { estimate: "odhad z posledního zápasu", confirmed: "potvrzená sestava", unknown: "málo zápasů v sezoně" };
+const LINEUP_STATUS = { estimate: "odhad z posledního zápasu", available: "dostupní hráči (NHL, asi 90 min před zápasem)", confirmed: "potvrzená sestava", unknown: "málo zápasů v sezoně" };
 
 function lineupTag(g) {
   if (!g.lineup) return "";
@@ -97,7 +97,8 @@ function lineupTag(g) {
 }
 
 function lineupTeam(name, t) {
-  const status = `${LINEUP_STATUS[t.status] || t.status}${t.confirmed_at ? `, ${fmtTime(t.confirmed_at)}` : ""}`;
+  const extra = t.status === "available" && t.listed > 20 ? `, ${t.listed - 20} z nich ještě vypadne` : "";
+  const status = `${LINEUP_STATUS[t.status] || t.status}${t.confirmed_at ? `, ${fmtTime(t.confirmed_at)}` : ""}${extra}`;
   if (t.status === "unknown") return `<div class="card"><div class="teams">${esc(name)}</div><div class="sub">${status}</div></div>`;
   const row = (p, extra) => `<tr><td class="l">${esc(p.name || "#" + p.player_id)}${p.key ? ' <span class="tag">klíčový</span>' : ""}</td>
     <td>${esc(p.position)}</td><td>${num(p.toi_min, 1)}</td><td>${num(p.points_per_game)}</td><td>${extra}</td></tr>`;

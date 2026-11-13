@@ -147,17 +147,23 @@ func (q *Queries) DeleteLeagueCoachTenures(ctx context.Context, arg DeleteLeague
 
 const deleteLineupExcept = `-- name: DeleteLineupExcept :exec
 DELETE FROM lineups
-WHERE game_id = $1 AND team_id = $2 AND NOT (player_id = ANY($3::integer[]))
+WHERE game_id = $1 AND team_id = $2 AND status = $3 AND NOT (player_id = ANY($4::integer[]))
 `
 
 type DeleteLineupExceptParams struct {
 	GameID int64
 	TeamID int32
+	Status string
 	Keep   []int32
 }
 
 func (q *Queries) DeleteLineupExcept(ctx context.Context, arg DeleteLineupExceptParams) error {
-	_, err := q.db.Exec(ctx, deleteLineupExcept, arg.GameID, arg.TeamID, arg.Keep)
+	_, err := q.db.Exec(ctx, deleteLineupExcept,
+		arg.GameID,
+		arg.TeamID,
+		arg.Status,
+		arg.Keep,
+	)
 	return err
 }
 
@@ -551,14 +557,15 @@ func (q *Queries) InsertGameSwehockey(ctx context.Context, arg InsertGameSwehock
 }
 
 const insertLineupPlayer = `-- name: InsertLineupPlayer :exec
-INSERT INTO lineups (game_id, team_id, player_id, position, confirmed_at, source)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (game_id, team_id, player_id) DO NOTHING
+INSERT INTO lineups (game_id, team_id, status, player_id, position, confirmed_at, source)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (game_id, team_id, status, player_id) DO NOTHING
 `
 
 type InsertLineupPlayerParams struct {
 	GameID      int64
 	TeamID      int32
+	Status      string
 	PlayerID    int32
 	Position    *string
 	ConfirmedAt pgtype.Timestamptz
@@ -569,6 +576,7 @@ func (q *Queries) InsertLineupPlayer(ctx context.Context, arg InsertLineupPlayer
 	_, err := q.db.Exec(ctx, insertLineupPlayer,
 		arg.GameID,
 		arg.TeamID,
+		arg.Status,
 		arg.PlayerID,
 		arg.Position,
 		arg.ConfirmedAt,

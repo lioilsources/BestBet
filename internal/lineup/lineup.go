@@ -12,7 +12,8 @@ import (
 // Status of a team's lineup for an upcoming game.
 const (
 	Estimate  = "estimate"  // the team's last game
-	Confirmed = "confirmed" // published by the source before the game
+	Available = "available" // the source's list of players who can play (~90 min before)
+	Confirmed = "confirmed" // the dressed lineup, published minutes before the game
 	Unknown   = "unknown"   // too few earlier games
 )
 
@@ -44,6 +45,13 @@ type Team struct {
 	Returning   []Player   `json:"returning"`
 	Share       float64    `json:"share"` // missing regulars' TOI / all regulars' TOI
 	KeyMissing  int        `json:"key_missing"`
+	Listed      int        `json:"listed,omitempty"` // players on the published list
+}
+
+// Published is a list the source published for one side.
+type Published struct {
+	Players []int32
+	At      time.Time
 }
 
 // Game holds both sides.
@@ -52,16 +60,25 @@ type Game struct {
 	Away Team `json:"away"`
 }
 
-// Build computes one side. confirmed is nil when no lineup was published;
-// then the last game's lineup stands in (estimate).
-func Build(prev []features.TeamGame, info map[int32]Info, season int, confirmed []int32, confirmedAt time.Time) Team {
+// Build computes one side from the best list there is: the dressed lineup,
+// else the available players, else the team's last game (estimate). With
+// the available list, missing regulars are certain absences; who of the
+// listed extras sits out is not known yet.
+func Build(prev []features.TeamGame, info map[int32]Info, season int, pub map[string]Published) Team {
 	t := Team{Status: Unknown, Missing: []Player{}, Returning: []Player{}}
 	var ids []int32
+	pick := func(status string) bool {
+		p, ok := pub[status]
+		if !ok || len(p.Players) == 0 {
+			return false
+		}
+		ids, t.Status, t.Listed = p.Players, status, len(p.Players)
+		at := p.At
+		t.ConfirmedAt = &at
+		return true
+	}
 	switch {
-	case confirmed != nil:
-		ids, t.Status = confirmed, Confirmed
-		ca := confirmedAt
-		t.ConfirmedAt = &ca
+	case pick(Confirmed), pick(Available):
 	case len(prev) > 0:
 		ids, t.Status = prev[len(prev)-1].Lineup(), Estimate
 	}

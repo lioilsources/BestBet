@@ -63,21 +63,30 @@ type TeamLineup struct {
 	ConfirmedAt time.Time // first poll that listed the lineup
 }
 
-// Lineups returns the published lineups of a game per team.
-func (s *Store) Lineups(ctx context.Context, gameID int64) (map[int32]TeamLineup, map[int32]string, error) {
+// Lineup statuses as stored.
+const (
+	LineupAvailable = "available"
+	LineupConfirmed = "confirmed"
+)
+
+// Lineups returns the published lists of a game per team and status.
+func (s *Store) Lineups(ctx context.Context, gameID int64) (map[int32]map[string]TeamLineup, map[int32]string, error) {
 	rows, err := s.Q.ListLineup(ctx, gameID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("lineup: %w", err)
 	}
-	out := map[int32]TeamLineup{}
+	out := map[int32]map[string]TeamLineup{}
 	names := map[int32]string{}
 	for _, r := range rows {
-		l := out[r.TeamID]
+		if out[r.TeamID] == nil {
+			out[r.TeamID] = map[string]TeamLineup{}
+		}
+		l := out[r.TeamID][r.Status]
 		l.Players = append(l.Players, r.PlayerID)
 		if t := r.ConfirmedAt.Time.UTC(); l.ConfirmedAt.IsZero() || t.Before(l.ConfirmedAt) {
 			l.ConfirmedAt = t
 		}
-		out[r.TeamID] = l
+		out[r.TeamID][r.Status] = l
 		names[r.PlayerID] = r.Name
 	}
 	return out, names, nil
@@ -89,19 +98,19 @@ type LineupPlayer struct {
 	Position string
 }
 
-// ReplaceLineup stores a team's lineup as seen at a poll: new players get
-// confirmed_at = at, players no longer listed are dropped.
-func (s *Store) ReplaceLineup(ctx context.Context, gameID int64, team int32, ps []LineupPlayer, at time.Time, source string) error {
+// ReplaceLineup stores a team's list of one status as seen at a poll: new
+// players get confirmed_at = at, players no longer listed are dropped.
+func (s *Store) ReplaceLineup(ctx context.Context, gameID int64, team int32, status string, ps []LineupPlayer, at time.Time, source string) error {
 	keep := make([]int32, 0, len(ps))
 	for _, p := range ps {
 		keep = append(keep, p.PlayerID)
 		pos := p.Position
-		if err := s.Q.InsertLineupPlayer(ctx, dbq.InsertLineupPlayerParams{GameID: gameID, TeamID: team, PlayerID: p.PlayerID,
+		if err := s.Q.InsertLineupPlayer(ctx, dbq.InsertLineupPlayerParams{GameID: gameID, TeamID: team, Status: status, PlayerID: p.PlayerID,
 			Position: &pos, ConfirmedAt: pgtype.Timestamptz{Time: at, Valid: true}, Source: source}); err != nil {
 			return fmt.Errorf("lineup player: %w", err)
 		}
 	}
-	if err := s.Q.DeleteLineupExcept(ctx, dbq.DeleteLineupExceptParams{GameID: gameID, TeamID: team, Keep: keep}); err != nil {
+	if err := s.Q.DeleteLineupExcept(ctx, dbq.DeleteLineupExceptParams{GameID: gameID, TeamID: team, Status: status, Keep: keep}); err != nil {
 		return fmt.Errorf("lineup prune: %w", err)
 	}
 	return nil

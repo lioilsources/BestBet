@@ -152,6 +152,7 @@ type League struct {
 type Lineup struct {
 	GameID      int64
 	TeamID      int32
+	Status      string
 	PlayerID    int32
 	Position    *string
 	ConfirmedAt pgtype.Timestamptz
