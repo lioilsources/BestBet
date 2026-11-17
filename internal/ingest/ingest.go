@@ -37,11 +37,11 @@ func (e Env) aliases(source, slug string) map[string]string {
 
 // Stats counts what one step did.
 type Stats struct {
-	Seen, New, Linked, Failed, Goalies, Quotes int
+	Seen, New, Linked, Failed, Goalies, Skaters, Quotes int
 }
 
 func (s Stats) String() string {
-	return fmt.Sprintf("seen=%d new=%d linked=%d failed=%d goalies=%d quotes=%d", s.Seen, s.New, s.Linked, s.Failed, s.Goalies, s.Quotes)
+	return fmt.Sprintf("seen=%d new=%d linked=%d failed=%d goalies=%d skaters=%d quotes=%d", s.Seen, s.New, s.Linked, s.Failed, s.Goalies, s.Skaters, s.Quotes)
 }
 
 // ResolveAPIHockeyLeague finds a configured league in the full API-HOCKEY

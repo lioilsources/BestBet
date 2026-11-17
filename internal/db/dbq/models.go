@@ -149,6 +149,16 @@ type League struct {
 	CreatedAt            pgtype.Timestamptz
 }
 
+type Lineup struct {
+	GameID      int64
+	TeamID      int32
+	Status      string
+	PlayerID    int32
+	Position    *string
+	ConfirmedAt pgtype.Timestamptz
+	Source      string
+}
+
 type OddsSnapshot struct {
 	ID              int64
 	GameID          *int64

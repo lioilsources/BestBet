@@ -73,3 +73,60 @@ func TestParseBoxscore(t *testing.T) {
 		t.Fatalf("%+v", gs)
 	}
 }
+
+func TestParseSkaters(t *testing.T) {
+	b, err := os.ReadFile("testdata/boxscore_2025020180.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ss, err := ParseSkaters(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	per := map[string]int{}
+	for _, s := range ss {
+		per[s.Side]++
+		if s.PlayerID == 0 || s.Name == "" || s.TOISeconds == 0 {
+			t.Fatalf("skater %+v", s)
+		}
+		if s.Position != "C" && s.Position != "LW" && s.Position != "RW" && s.Position != "D" {
+			t.Fatalf("position %+v", s)
+		}
+	}
+	if per["home"] != 18 || per["away"] != 18 {
+		t.Fatalf("per side %v", per)
+	}
+	empty, err := ParseSkaters([]byte(`{"gameState":"FUT"}`))
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("future game: %v %v", empty, err)
+	}
+}
+
+func TestParseRoster(t *testing.T) {
+	b, err := os.ReadFile("testdata/pbp_pre_2026020301.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := ParseRoster(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.State != "PRE" || len(r.Home) != 20 || len(r.Away) != 20 || !Dressed(r.Home) || !Dressed(r.Away) {
+		t.Fatalf("roster %s %d %d", r.State, len(r.Home), len(r.Away))
+	}
+	goalies := 0
+	for _, p := range r.Home {
+		if p.Name == "" || p.PlayerID == 0 {
+			t.Fatalf("spot %+v", p)
+		}
+		if p.Position == "G" {
+			goalies++
+		}
+	}
+	if goalies != 2 {
+		t.Fatalf("home goalies %d", goalies)
+	}
+	if Dressed(make([]RosterSpot, 23)) {
+		t.Fatal("23 listed players are the roster, not the lineup")
+	}
+}

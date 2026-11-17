@@ -240,6 +240,139 @@ func ParseBoxscore(b []byte) ([]Goalie, error) {
 	return out, nil
 }
 
+// Skater line from the boxscore (forwards and defence who dressed).
+type Skater struct {
+	Side       string
+	PlayerID   int
+	Name       string // abbreviated, e.g. "S. Colangelo"
+	Jersey     int
+	Position   string // C, LW, RW, D
+	TOISeconds int
+	Goals      int
+	Assists    int
+	PlusMinus  int
+	Shots      int
+	PIM        int
+}
+
+// ParseSkaters returns every skater listed in the boxscore. A game that has
+// not started yet has no playerByGameStats and gives an empty slice.
+func ParseSkaters(b []byte) ([]Skater, error) {
+	type rs struct {
+		PlayerID int `json:"playerId"`
+		Jersey   int `json:"sweaterNumber"`
+		Name     struct {
+			Default string `json:"default"`
+		} `json:"name"`
+		Position  string `json:"position"`
+		Goals     int    `json:"goals"`
+		Assists   int    `json:"assists"`
+		PlusMinus int    `json:"plusMinus"`
+		PIM       int    `json:"pim"`
+		SOG       int    `json:"sog"`
+		TOI       string `json:"toi"`
+	}
+	type team struct {
+		Forwards []rs `json:"forwards"`
+		Defense  []rs `json:"defense"`
+	}
+	var doc struct {
+		PlayerByGameStats struct {
+			HomeTeam team `json:"homeTeam"`
+			AwayTeam team `json:"awayTeam"`
+		} `json:"playerByGameStats"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return nil, fmt.Errorf("decode nhl boxscore: %w", err)
+	}
+	var out []Skater
+	for _, side := range []struct {
+		name string
+		t    team
+	}{{"home", doc.PlayerByGameStats.HomeTeam}, {"away", doc.PlayerByGameStats.AwayTeam}} {
+		for _, x := range append(append([]rs{}, side.t.Forwards...), side.t.Defense...) {
+			out = append(out, Skater{Side: side.name, PlayerID: x.PlayerID, Name: x.Name.Default, Jersey: x.Jersey,
+				Position: position(x.Position), TOISeconds: mmss(x.TOI), Goals: x.Goals, Assists: x.Assists,
+				PlusMinus: x.PlusMinus, Shots: x.SOG, PIM: x.PIM})
+		}
+	}
+	return out, nil
+}
+
+// RosterSpot is one player listed for a game in play-by-play rosterSpots.
+type RosterSpot struct {
+	PlayerID int
+	Name     string
+	Position string // C, LW, RW, D, G
+}
+
+// Roster is the play-by-play roster of a game. Before the game it lists the
+// available players (21-23 per team) and narrows to the dressed lineup
+// (18 skaters + 2 goalies) shortly before the start (plan 04 L0).
+type Roster struct {
+	State      string
+	Home, Away []RosterSpot
+}
+
+// MaxDressed is the most players a dressed NHL lineup lists (18 skaters + 2 goalies).
+const MaxDressed = 20
+
+// Dressed reports whether a side's list is already the game lineup.
+func Dressed(spots []RosterSpot) bool {
+	return len(spots) >= MaxDressed-2 && len(spots) <= MaxDressed
+}
+
+// ParseRoster reads rosterSpots of gamecenter/<id>/play-by-play.
+func ParseRoster(b []byte) (Roster, error) {
+	var doc struct {
+		GameState string `json:"gameState"`
+		HomeTeam  struct {
+			ID int `json:"id"`
+		} `json:"homeTeam"`
+		AwayTeam struct {
+			ID int `json:"id"`
+		} `json:"awayTeam"`
+		RosterSpots []struct {
+			TeamID    int    `json:"teamId"`
+			PlayerID  int    `json:"playerId"`
+			Position  string `json:"positionCode"`
+			FirstName struct {
+				Default string `json:"default"`
+			} `json:"firstName"`
+			LastName struct {
+				Default string `json:"default"`
+			} `json:"lastName"`
+		} `json:"rosterSpots"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return Roster{}, fmt.Errorf("decode nhl play-by-play: %w", err)
+	}
+	r := Roster{State: doc.GameState}
+	for _, x := range doc.RosterSpots {
+		sp := RosterSpot{PlayerID: x.PlayerID, Name: strings.TrimSpace(x.FirstName.Default + " " + x.LastName.Default), Position: position(x.Position)}
+		switch x.TeamID {
+		case doc.HomeTeam.ID:
+			r.Home = append(r.Home, sp)
+		case doc.AwayTeam.ID:
+			r.Away = append(r.Away, sp)
+		}
+	}
+	return r, nil
+}
+
+// position maps NHL codes to the players.position domain.
+func position(code string) string {
+	switch code {
+	case "L":
+		return "LW"
+	case "R":
+		return "RW"
+	case "C", "D", "G":
+		return code
+	}
+	return "F"
+}
+
 func mmss(s string) int {
 	m, sec, ok := strings.Cut(s, ":")
 	if !ok {

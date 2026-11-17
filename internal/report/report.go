@@ -175,9 +175,9 @@ func Render(d Data) string {
 		w("Žádná okrajová liga zatím neprošla branami (≥ %d sezony, ≥ %d knih, join ≥ 98 %%). Viz sloupec „Neprošlo“.\n", MinSeasons, MinBooks)
 	}
 
-	w("\n## Sezony\n\n| Liga | Sezona | Zápasů | S kurzy | S brankáři | Mimo základní část | Po 60 min nerozhodnuto |\n|---|---|---|---|---|---|---|\n")
+	w("\n## Sezony\n\n| Liga | Sezona | Zápasů | S kurzy | S brankáři | S bruslaři | Mimo základní část | Po 60 min nerozhodnuto |\n|---|---|---|---|---|---|---|---|\n")
 	for _, c := range d.Coverage {
-		w("| %s | %d/%02d | %d | %d | %d | %d | %d |\n", c.Name, c.Season, (c.Season+1)%100, c.Games, c.GamesWithOdds, c.GamesWithGoalies, c.GamesNonRegular, c.GamesPast60)
+		w("| %s | %d/%02d | %d | %d | %d | %d | %d | %d |\n", c.Name, c.Season, (c.Season+1)%100, c.Games, c.GamesWithOdds, c.GamesWithGoalies, c.GamesWithSkaters, c.GamesNonRegular, c.GamesPast60)
 	}
 
 	w("\n## Trhy v kurzech\n\n| Liga | Trh | Zápasů | Knih |\n|---|---|---|---|\n")

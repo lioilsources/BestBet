@@ -22,6 +22,7 @@ import (
 	"github.com/lioilsources/BestBet/internal/canon"
 	"github.com/lioilsources/BestBet/internal/edge"
 	"github.com/lioilsources/BestBet/internal/hint"
+	"github.com/lioilsources/BestBet/internal/lineup"
 	"github.com/lioilsources/BestBet/internal/store"
 	"github.com/lioilsources/BestBet/internal/web"
 )
@@ -38,6 +39,46 @@ func (s source) Game(ctx context.Context, id int64) (canon.GameInfo, error) {
 }
 
 func (s source) Coverage(ctx context.Context) (any, error) { return s.Store.Coverage(ctx) }
+
+// Lineups builds both sides' absences; leagues without skater lines get nil.
+func (s source) Lineups(ctx context.Context, g canon.GameInfo) (*lineup.Game, error) {
+	pub, names, err := s.Store.Lineups(ctx, g.ID)
+	if err != nil {
+		return nil, err
+	}
+	side := func(team int32) (lineup.Team, bool, error) {
+		prev, info, err := s.Store.TeamGames(ctx, team, g.Season, g.StartAt)
+		if err != nil {
+			return lineup.Team{}, false, err
+		}
+		in := make(map[int32]lineup.Info, len(info))
+		for id, x := range info {
+			in[id] = lineup.Info{Name: x.Name, Games: x.Games, Points: x.Points}
+		}
+		for id, n := range names {
+			if _, ok := in[id]; !ok {
+				in[id] = lineup.Info{Name: n}
+			}
+		}
+		lists := map[string]lineup.Published{}
+		for status, l := range pub[team] {
+			lists[status] = lineup.Published{Players: l.Players, At: l.ConfirmedAt}
+		}
+		return lineup.Build(prev, in, g.Season, lists), len(prev) > 0, nil
+	}
+	h, okH, err := side(g.HomeTeam)
+	if err != nil {
+		return nil, err
+	}
+	a, okA, err := side(g.AwayTeam)
+	if err != nil {
+		return nil, err
+	}
+	if !okH && !okA {
+		return nil, nil
+	}
+	return &lineup.Game{Home: h, Away: a}, nil
+}
 
 func main() {
 	if err := run(); err != nil {

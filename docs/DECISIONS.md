@@ -2,6 +2,43 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-17 (M3b L5: sestavy Allsvenskan před zápasem, neověřeno)
+
+- Sonda 2026-11-13 16:00–18:40 UTC: rozpis Allsvenskan stažený každých 10 min (17 snímků), zápasy dne začínaly 18:00 UTC.
+- Žádný zápas dne nedostal odkaz `/Game/...` ani po začátku. Stránka rozpisu nese razítko vygenerování z předchozího dne, server ji tedy během dne neobnovuje.
+- Z rozpisu se tedy nedá zjistit, jestli je sestava před začátkem. L5 zůstává neověřená a appka u Allsvenskan ukazuje jen odhad (poslední zápas).
+- Další krok, až bude potřeba: sonda z JODY přes existující swehockey ingest (ID zápasu po začátku) nebo jiný zdroj sestav. Nic se nenasazuje.
+
+## 2026-11-13 (M3b L4: výsledek, brána B2 neprošla)
+
+- **Report `docs/RESULTS_M3B_ABSENCE_NHL.md`.** 2 892 zápasů základní části se sestavou, u 2 670 jsou absence spočítané.
+- **H7 (n = 176, zápasy s t24h i closing Pinnaclu):** potvrzená sestava vysvětluje část pohybu trhu k uzavření, β = +0,25 (+0,12 až +0,40), R² 0,064. Odhad z posledního zápasu má slabší, ale také kladné β (+0,16, interval těsně nad nulou), takže trh známé absence k t24h ještě úplně nezapracoval. Nová informace z potvrzené sestavy sama: β +0,19, interval zasahuje nulu.
+- **F-abs:** žádná varianta nezlepší trh jako prior. Na opening a t24h absence log-loss mírně zhoršují (+0,1 až +0,2 %), na t1h je Δ záporné (−0,5 % a −0,25 %), ale s širokým intervalem přes nulu (n = 345). Nad modelem (`periods-v1` + goalie + b2b) taky nic.
+- **Verdikt B2: neprošlo.** Absence zůstávají jen informací v UI (blok Sestava), model ani hint se nemění. H7 podporuje to, že je smysl je ukazovat: trh se po nich hýbe.
+
+## 2026-11-13 (M3b L4: konfigurace pevně předem, zapsáno před prvním během)
+
+- **Vstup:** NHL, základní část, sestavy = skuteční bruslaři zápasu z boxscore (`player_match_stats`). `features.AbsenceBefore` s prahy z plánu 04 L2. Strana bez ≥ 5 dřívějších zápasů sezony má x = 0.
+- **Proměnné:** `abs-est` = share_hosté − share_domácí, kde sestava = poslední zápas týmu (známo kdykoli předem). `abs-conf` = totéž se skutečnou sestavou zápasu. `abs-new` = abs-conf − abs-est (to, co přinese až potvrzená sestava).
+- **H7:** y = logit q_close − logit q_t24h, kde q = p_dom / (p_dom + p_hosté) ze Shina celého 1X2 Pinnaclu. OLS y = a + β·x zvlášť pro abs-est, abs-conf, abs-new. Hlásí se β, 95% interval (bootstrap po zápasech, 2 000 opakování, pevné semínko), R², n. Jen zápasy, kde má Pinnacle t24h i closing. Všechny sezony s kurzy (H7 je popis, ne fit modelu).
+- **F-abs:** stejný walk jako F1 (`marketprior.Walk`, týdenní okna, ridge 1, min. 100 aktivních zápasů, min. 100 tréninkových). Hodnotí se jen odložené sezony (od 2025/26). Dvě priory:
+  - trh: Shin snímku opening, t24h, t1h, closing (Pinnacle, jinak medián knih), varianty trh sám, +abs-est, +abs-conf;
+  - model: `periods-v1` jako prior s vrstvami goalie + b2b, varianty bez absence, +abs-est, +abs-conf. Δ proti variantě bez absence.
+- **BH (q = 0,10)** přes všechny varianty s absencí v reportu kromě snímku closing (ten je diagnostika jako v F1).
+- **Brána B2:** abs-est na opening, t24h nebo t1h, nebo abs-conf na t1h (jen tam může být potvrzená sestava známa; na opening a t24h je abs-conf zpětný pohled jako H3 u brankáře), proti **trhu jako prioru**: Δ log-loss < 0 s 95% intervalem pod nulou a průchod BH. Jinak absence zůstává jen informací v UI.
+
+## 2026-11-13 (M3b L0: zdroj sestav NHL, brána B0)
+
+- **Sonda 2026-11-12/13:** 10 zápasů NHL, `boxscore`, `landing`, `right-rail` a `play-by-play` každých 10 min od −120 min do konce.
+- **Boxscore** nemá hráče až do začátku zápasu. Sestava před zápasem je jen v `play-by-play` `rosterSpots`.
+- **`rosterSpots` mají dvě fáze:**
+  - asi 90–115 min předem seznam dostupných hráčů, 21–23 na tým bez hráčů na IR; finální sestava byla vždy jeho podmnožina (v 10 z 10 zápasů nikdo nechyběl);
+  - potom se zúží na přesnou sestavu (18 bruslařů + 2 brankáři), v 10 z 10 zápasů bez jediného rozdílu proti finálnímu boxscore.
+- **Kdy se zúží (min před plánovaným začátkem, přesnost ±10 min):** 54, 33, 26, 24, 14, 13, 6, 5, 5, 5; medián 13,5.
+- **Brána B0 (sestava ≥ 20 min předem) neprošla:** jen 4 z 10 zápasů.
+- **Rozhodnutí (vlastník 2026-11-13: „nezastavuj se u každé gate“):** kromě potvrzené sestavy se ukládá i seznam dostupných hráčů (`lineups.status = available`). Chybějící pravidelní hráči jsou z něj jistí asi 1,5 h předem, což je lepší než odhad z posledního zápasu. Appka ukazuje potvrzenou sestavu, jinak dostupné, jinak odhad. Jde jen o UI, model ani hint se nemění (B2 neprošla).
+- **`player_absence_games` se neplní:** nic ho nečte; absence se počítají z `player_match_stats` a `lineups`.
+
 ## 2026-11-12 (M3b L6: načasování CZ knih proti Pinnaclu)
 
 - **Report `docs/RESULTS_M3B_TIMING.md`** z plné historie cen OddsPapi v HTTP cache (`backtest -timing`, offline, 0 requestů). Prahy pevně předem: pohyb Pinnaclu ≥ 2 p. b. za 30 min, reakce knihy ≥ 1 p. b. stejným směrem.
@@ -9,6 +46,11 @@ Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a 
 - **Allsvenskan:** knihy jsou pomalé (medián 81 min Betano, 43 min MerkurXtip; Betano do začátku zareaguje jen u 42 % pohybů). Okna trvají v mediánu 73 min; cron po 2 h zachytí asi 57 %.
 - **CLV prvního hintu okna je kladné v obou ligách** (NHL +2,1 %, n = 436; Allsvenskan +1,9 %, n = 169), po pohybu Pinnaclu vyšší (+3,9 % a +3,2 %). Je to zpětná simulace na celé cenové řadě, ne prospektivní deník: brána M2-hint dál stojí jen na tabulce `hints`.
 - **Důsledek pro provoz:** cron po 2 h z plánu 03 zachytí v NHL jen menšinu oken. Častější cron je otázka kvóty OddsPapi (free, limit neznámý), proto rozhoduje vlastník. Pravidlo hintu se nemění.
+## 2026-11-12 (M3b L1: bruslaři z boxscore)
+
+- **`ingest-hockey nhl` ukládá i bruslaře** do `player_match_stats` (TOI, G, A, +/−, střely, PIM) a hráče přes `player_sources (nhl, playerId)`. Jméno je zkrácené, jak ho boxscore uvádí („S. Colangelo“); identitou je `playerId`.
+- **`line_no` zůstává prázdné:** boxscore lajny neuvádí a pořadí v něm není pořadí lajn.
+- **Zpětné doplnění 2024/25–2026/27 z HTTP cache:** 3 060 zápasů, 110 152 řádků, 1 108 hráčů, 23 nových requestů (jen nové dny sezony 2026/27). Pokrytí odehraných zápasů 100 %, 18 bruslařů na stranu (8 stran ze 6 120 mělo 17). Sezona 2023/24 se nedoplňuje, plán ji nechce.
 
 ## 2026-11-10 (M3: sestavy a zranění, rozhodnutí vlastníka)
 
