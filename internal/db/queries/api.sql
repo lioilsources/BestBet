@@ -119,3 +119,20 @@ JOIN games g ON g.id = pm.game_id
 JOIN leagues l ON l.id = g.league_id
 GROUP BY l.slug, g.season
 ORDER BY l.slug, g.season;
+
+-- name: TeamPlayerLines :many
+-- A team's skater lines of one season before a moment (absences, plan 04 L2).
+SELECT g.id AS game_id, g.start_at, pm.player_id, pm.position, pm.toi_seconds,
+       pm.goals, pm.assists, p.name
+FROM player_match_stats pm
+JOIN games g ON g.id = pm.game_id
+JOIN players p ON p.id = pm.player_id
+WHERE pm.team_id = $1 AND g.season = $2 AND g.start_at < $3 AND pm.source = 'nhl'
+ORDER BY g.start_at, pm.player_id;
+
+-- name: ListLineup :many
+SELECT l.team_id, l.status, l.player_id, l.position, l.confirmed_at, p.name
+FROM lineups l
+JOIN players p ON p.id = l.player_id
+WHERE l.game_id = $1
+ORDER BY l.team_id, l.status, l.player_id;

@@ -299,6 +299,67 @@ func ParseSkaters(b []byte) ([]Skater, error) {
 	return out, nil
 }
 
+// RosterSpot is one player listed for a game in play-by-play rosterSpots.
+type RosterSpot struct {
+	PlayerID int
+	Name     string
+	Position string // C, LW, RW, D, G
+}
+
+// Roster is the play-by-play roster of a game. Before the game it lists the
+// available players (21-23 per team) and narrows to the dressed lineup
+// (18 skaters + 2 goalies) shortly before the start (plan 04 L0).
+type Roster struct {
+	State      string
+	Home, Away []RosterSpot
+}
+
+// MaxDressed is the most players a dressed NHL lineup lists (18 skaters + 2 goalies).
+const MaxDressed = 20
+
+// Dressed reports whether a side's list is already the game lineup.
+func Dressed(spots []RosterSpot) bool {
+	return len(spots) >= MaxDressed-2 && len(spots) <= MaxDressed
+}
+
+// ParseRoster reads rosterSpots of gamecenter/<id>/play-by-play.
+func ParseRoster(b []byte) (Roster, error) {
+	var doc struct {
+		GameState string `json:"gameState"`
+		HomeTeam  struct {
+			ID int `json:"id"`
+		} `json:"homeTeam"`
+		AwayTeam struct {
+			ID int `json:"id"`
+		} `json:"awayTeam"`
+		RosterSpots []struct {
+			TeamID    int    `json:"teamId"`
+			PlayerID  int    `json:"playerId"`
+			Position  string `json:"positionCode"`
+			FirstName struct {
+				Default string `json:"default"`
+			} `json:"firstName"`
+			LastName struct {
+				Default string `json:"default"`
+			} `json:"lastName"`
+		} `json:"rosterSpots"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return Roster{}, fmt.Errorf("decode nhl play-by-play: %w", err)
+	}
+	r := Roster{State: doc.GameState}
+	for _, x := range doc.RosterSpots {
+		sp := RosterSpot{PlayerID: x.PlayerID, Name: strings.TrimSpace(x.FirstName.Default + " " + x.LastName.Default), Position: position(x.Position)}
+		switch x.TeamID {
+		case doc.HomeTeam.ID:
+			r.Home = append(r.Home, sp)
+		case doc.AwayTeam.ID:
+			r.Away = append(r.Away, sp)
+		}
+	}
+	return r, nil
+}
+
 // position maps NHL codes to the players.position domain.
 func position(code string) string {
 	switch code {
