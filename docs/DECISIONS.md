@@ -2,6 +2,13 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-17 (M3b L5: sestavy Allsvenskan před zápasem, neověřeno)
+
+- Sonda 2026-11-13 16:00–18:40 UTC: rozpis Allsvenskan stažený každých 10 min (17 snímků), zápasy dne začínaly 18:00 UTC.
+- Žádný zápas dne nedostal odkaz `/Game/...` ani po začátku. Stránka rozpisu nese razítko vygenerování z předchozího dne, server ji tedy během dne neobnovuje.
+- Z rozpisu se tedy nedá zjistit, jestli je sestava před začátkem. L5 zůstává neověřená a appka u Allsvenskan ukazuje jen odhad (poslední zápas).
+- Další krok, až bude potřeba: sonda z JODY přes existující swehockey ingest (ID zápasu po začátku) nebo jiný zdroj sestav. Nic se nenasazuje.
+
 ## 2026-11-13 (M3b L4: výsledek, brána B2 neprošla)
 
 - **Report `docs/RESULTS_M3B_ABSENCE_NHL.md`.** 2 892 zápasů základní části se sestavou, u 2 670 jsou absence spočítané.
