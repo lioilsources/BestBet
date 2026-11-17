@@ -2,6 +2,11 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-17 (provoz: frekvence živých kurzů, rozhodnutí vlastníka)
+
+- NHL každých 10 min v 16:00–05:59 SEČ (zápasy začínají 18:00–04:30), Allsvenskan každých 30 min. Podle L6 zachytí 10 min v NHL 63 % oken místo 22 % při 2 h.
+- Jeden běh ligy stojí 1 dotaz na fixtures a 1 na každý zápas v okně (−30 h … +12 h), u NHL zhruba 8. Kvóta free tieru OddsPapi není známá; při 429 zpět na 3 h a zapsat.
+
 ## 2026-11-17 (M3b L5: sestavy Allsvenskan před zápasem, neověřeno)
 
 - Sonda 2026-11-13 16:00–18:40 UTC: rozpis Allsvenskan stažený každých 10 min (17 snímků), zápasy dne začínaly 18:00 UTC.
