@@ -39,6 +39,13 @@ Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a 
 - **Rozhodnutí (vlastník 2026-11-13: „nezastavuj se u každé gate“):** kromě potvrzené sestavy se ukládá i seznam dostupných hráčů (`lineups.status = available`). Chybějící pravidelní hráči jsou z něj jistí asi 1,5 h předem, což je lepší než odhad z posledního zápasu. Appka ukazuje potvrzenou sestavu, jinak dostupné, jinak odhad. Jde jen o UI, model ani hint se nemění (B2 neprošla).
 - **`player_absence_games` se neplní:** nic ho nečte; absence se počítají z `player_match_stats` a `lineups`.
 
+## 2026-11-12 (M3b L6: načasování CZ knih proti Pinnaclu)
+
+- **Report `docs/RESULTS_M3B_TIMING.md`** z plné historie cen OddsPapi v HTTP cache (`backtest -timing`, offline, 0 requestů). Prahy pevně předem: pohyb Pinnaclu ≥ 2 p. b. za 30 min, reakce knihy ≥ 1 p. b. stejným směrem.
+- **NHL:** CZ knihy na pohyb Pinnaclu reagují rychle (medián 4 min Betano, 8 min MerkurXtip). Okna hintu `market-value-v1` jsou krátká, medián 7 min. Cron po 2 h by zachytil asi 22 % oken, po 10 min asi 63 %.
+- **Allsvenskan:** knihy jsou pomalé (medián 81 min Betano, 43 min MerkurXtip; Betano do začátku zareaguje jen u 42 % pohybů). Okna trvají v mediánu 73 min; cron po 2 h zachytí asi 57 %.
+- **CLV prvního hintu okna je kladné v obou ligách** (NHL +2,1 %, n = 436; Allsvenskan +1,9 %, n = 169), po pohybu Pinnaclu vyšší (+3,9 % a +3,2 %). Je to zpětná simulace na celé cenové řadě, ne prospektivní deník: brána M2-hint dál stojí jen na tabulce `hints`.
+- **Důsledek pro provoz:** cron po 2 h z plánu 03 zachytí v NHL jen menšinu oken. Častější cron je otázka kvóty OddsPapi (free, limit neznámý), proto rozhoduje vlastník. Pravidlo hintu se nemění.
 ## 2026-11-12 (M3b L1: bruslaři z boxscore)
 
 - **`ingest-hockey nhl` ukládá i bruslaře** do `player_match_stats` (TOI, G, A, +/−, střely, PIM) a hráče přes `player_sources (nhl, playerId)`. Jméno je zkrácené, jak ho boxscore uvádí („S. Colangelo“); identitou je `playerId`.

@@ -21,12 +21,16 @@ import (
 // ErrBudget is returned when the request budget is used up.
 var ErrBudget = errors.New("request budget exhausted")
 
+// ErrOffline is returned by an Offline client for a URL that is not cached.
+var ErrOffline = errors.New("not in cache (offline)")
+
 // Client fetches URLs with caching.
 type Client struct {
 	HTTP      *http.Client
 	Dir       string        // cache directory; empty disables caching
 	MinGap    time.Duration // minimum spacing between network requests
 	Budget    int           // max network requests in this process; 0 = unlimited
+	Offline   bool          // serve any cached copy regardless of TTL, never touch the network
 	UserAgent string
 	Header    http.Header // extra headers (auth); never part of the cache key
 	Now       func() time.Time
@@ -55,6 +59,16 @@ func (c *Client) Used() int {
 // Get returns the body and whether it came from cache.
 func (c *Client) Get(ctx context.Context, r Request) ([]byte, bool, error) {
 	path := c.path(r)
+	if c.Offline {
+		if path == "" {
+			return nil, false, ErrOffline
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil, false, fmt.Errorf("%s: %w", r.Key, ErrOffline)
+		}
+		return b, true, nil
+	}
 	if path != "" && r.TTL >= 0 {
 		if st, err := os.Stat(path); err == nil && (r.TTL == 0 || c.now().Sub(st.ModTime()) < r.TTL) {
 			b, err := os.ReadFile(path)
