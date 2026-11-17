@@ -152,6 +152,50 @@ func (q *Queries) CoverageOdds(ctx context.Context) ([]CoverageOddsRow, error) {
 	return items, nil
 }
 
+const coveragePlayers = `-- name: CoveragePlayers :many
+SELECT l.slug, g.season, count(DISTINCT pm.game_id) AS games, count(*) AS lines,
+       count(DISTINCT pm.player_id) AS players
+FROM player_match_stats pm
+JOIN games g ON g.id = pm.game_id
+JOIN leagues l ON l.id = g.league_id
+GROUP BY l.slug, g.season
+ORDER BY l.slug, g.season
+`
+
+type CoveragePlayersRow struct {
+	Slug    string
+	Season  int32
+	Games   int64
+	Lines   int64
+	Players int64
+}
+
+func (q *Queries) CoveragePlayers(ctx context.Context) ([]CoveragePlayersRow, error) {
+	rows, err := q.db.Query(ctx, coveragePlayers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CoveragePlayersRow
+	for rows.Next() {
+		var i CoveragePlayersRow
+		if err := rows.Scan(
+			&i.Slug,
+			&i.Season,
+			&i.Games,
+			&i.Lines,
+			&i.Players,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const coveragePredictions = `-- name: CoveragePredictions :many
 SELECT model_version, count(*) AS predictions, max(computed_at)::timestamptz AS last_at
 FROM predictions

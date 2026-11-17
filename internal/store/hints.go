@@ -55,6 +55,7 @@ type Coverage struct {
 	Odds        []dbq.CoverageOddsRow        `json:"odds"`
 	Coaches     []dbq.CoverageCoachesRow     `json:"coaches"`
 	Predictions []dbq.CoveragePredictionsRow `json:"predictions"`
+	Players     []dbq.CoveragePlayersRow     `json:"players"`
 	At          time.Time                    `json:"at"`
 }
 
@@ -73,6 +74,9 @@ func (s *Store) Coverage(ctx context.Context) (Coverage, error) {
 	}
 	if c.Predictions, err = s.Q.CoveragePredictions(ctx); err != nil {
 		return c, fmt.Errorf("coverage predictions: %w", err)
+	}
+	if c.Players, err = s.Q.CoveragePlayers(ctx); err != nil {
+		return c, fmt.Errorf("coverage players: %w", err)
 	}
 	c.At = time.Now().UTC()
 	return c, nil

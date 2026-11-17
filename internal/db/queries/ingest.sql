@@ -227,3 +227,34 @@ WHERE t.id = ct.team_id AND t.league_id = $1 AND ct.source = $2;
 INSERT INTO coach_tenures (coach_id, team_id, role, from_date, to_date, source)
 VALUES ($1, $2, 'head', $3, $4, $5)
 ON CONFLICT DO NOTHING;
+
+-- name: ListPlayerSources :many
+SELECT source_player_id, player_id FROM player_sources WHERE source = $1;
+
+-- name: InsertPlayer :one
+INSERT INTO players (name, name_norm, position, created_by)
+VALUES ($1, $2, $3, $4)
+RETURNING id;
+
+-- name: InsertPlayerSource :exec
+INSERT INTO player_sources (source, source_player_id, player_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (source, source_player_id) DO NOTHING;
+
+-- UpsertPlayerMatchStatsBatch writes one boxscore per round trip.
+-- name: UpsertPlayerMatchStatsBatch :batchexec
+INSERT INTO player_match_stats (
+    player_id, game_id, team_id, side, jersey, position, toi_seconds,
+    goals, assists, plus_minus, shots, pim, source
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+ON CONFLICT (player_id, game_id, source) DO UPDATE SET
+    team_id = EXCLUDED.team_id,
+    side = EXCLUDED.side,
+    jersey = EXCLUDED.jersey,
+    position = EXCLUDED.position,
+    toi_seconds = EXCLUDED.toi_seconds,
+    goals = EXCLUDED.goals,
+    assists = EXCLUDED.assists,
+    plus_minus = EXCLUDED.plus_minus,
+    shots = EXCLUDED.shots,
+    pim = EXCLUDED.pim;

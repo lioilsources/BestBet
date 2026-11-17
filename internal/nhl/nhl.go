@@ -240,6 +240,78 @@ func ParseBoxscore(b []byte) ([]Goalie, error) {
 	return out, nil
 }
 
+// Skater line from the boxscore (forwards and defence who dressed).
+type Skater struct {
+	Side       string
+	PlayerID   int
+	Name       string // abbreviated, e.g. "S. Colangelo"
+	Jersey     int
+	Position   string // C, LW, RW, D
+	TOISeconds int
+	Goals      int
+	Assists    int
+	PlusMinus  int
+	Shots      int
+	PIM        int
+}
+
+// ParseSkaters returns every skater listed in the boxscore. A game that has
+// not started yet has no playerByGameStats and gives an empty slice.
+func ParseSkaters(b []byte) ([]Skater, error) {
+	type rs struct {
+		PlayerID int `json:"playerId"`
+		Jersey   int `json:"sweaterNumber"`
+		Name     struct {
+			Default string `json:"default"`
+		} `json:"name"`
+		Position  string `json:"position"`
+		Goals     int    `json:"goals"`
+		Assists   int    `json:"assists"`
+		PlusMinus int    `json:"plusMinus"`
+		PIM       int    `json:"pim"`
+		SOG       int    `json:"sog"`
+		TOI       string `json:"toi"`
+	}
+	type team struct {
+		Forwards []rs `json:"forwards"`
+		Defense  []rs `json:"defense"`
+	}
+	var doc struct {
+		PlayerByGameStats struct {
+			HomeTeam team `json:"homeTeam"`
+			AwayTeam team `json:"awayTeam"`
+		} `json:"playerByGameStats"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return nil, fmt.Errorf("decode nhl boxscore: %w", err)
+	}
+	var out []Skater
+	for _, side := range []struct {
+		name string
+		t    team
+	}{{"home", doc.PlayerByGameStats.HomeTeam}, {"away", doc.PlayerByGameStats.AwayTeam}} {
+		for _, x := range append(append([]rs{}, side.t.Forwards...), side.t.Defense...) {
+			out = append(out, Skater{Side: side.name, PlayerID: x.PlayerID, Name: x.Name.Default, Jersey: x.Jersey,
+				Position: position(x.Position), TOISeconds: mmss(x.TOI), Goals: x.Goals, Assists: x.Assists,
+				PlusMinus: x.PlusMinus, Shots: x.SOG, PIM: x.PIM})
+		}
+	}
+	return out, nil
+}
+
+// position maps NHL codes to the players.position domain.
+func position(code string) string {
+	switch code {
+	case "L":
+		return "LW"
+	case "R":
+		return "RW"
+	case "C", "D", "G":
+		return code
+	}
+	return "F"
+}
+
 func mmss(s string) int {
 	m, sec, ok := strings.Cut(s, ":")
 	if !ok {

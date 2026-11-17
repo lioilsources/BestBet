@@ -24,6 +24,12 @@ goalie_games AS (
     WHERE gl.starter
     GROUP BY gl.game_id
     HAVING count(DISTINCT gl.side) = 2
+),
+skater_games AS (
+    SELECT pm.game_id
+    FROM player_match_stats pm
+    GROUP BY pm.game_id
+    HAVING count(DISTINCT pm.side) = 2
 )
 SELECT
     l.slug,
@@ -33,6 +39,7 @@ SELECT
     count(*)::bigint AS games,
     count(og.game_id)::bigint AS games_with_odds,
     count(gg.game_id)::bigint AS games_with_goalies,
+    count(sg.game_id)::bigint AS games_with_skaters,
     count(*) FILTER (WHERE g.phase <> 'regular')::bigint AS games_non_regular,
     count(*) FILTER (WHERE g.decided_in IN ('ot', 'so'))::bigint AS games_past_60
 FROM fin
@@ -40,6 +47,7 @@ JOIN leagues l ON l.id = fin.league_id
 JOIN games g ON g.id = fin.id
 LEFT JOIN odds_games og ON og.game_id = fin.id
 LEFT JOIN goalie_games gg ON gg.game_id = fin.id
+LEFT JOIN skater_games sg ON sg.game_id = fin.id
 GROUP BY l.slug, l.name, l.role, fin.season
 ORDER BY l.slug, fin.season
 `
@@ -52,6 +60,7 @@ type CoverageByLeagueSeasonRow struct {
 	Games            int64
 	GamesWithOdds    int64
 	GamesWithGoalies int64
+	GamesWithSkaters int64
 	GamesNonRegular  int64
 	GamesPast60      int64
 }
@@ -73,6 +82,7 @@ func (q *Queries) CoverageByLeagueSeason(ctx context.Context) ([]CoverageByLeagu
 			&i.Games,
 			&i.GamesWithOdds,
 			&i.GamesWithGoalies,
+			&i.GamesWithSkaters,
 			&i.GamesNonRegular,
 			&i.GamesPast60,
 		); err != nil {

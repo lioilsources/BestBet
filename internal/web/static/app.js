@@ -237,7 +237,9 @@ async function renderEval() {
 async function renderData() {
   const d = await api("/api/data");
   if (d.loading) {
-    view.innerHTML = `<h1>Data</h1><p class="muted">Počítám přehled (projde celou databázi, trvá to desítky sekund)…</p>`;
+    const players = (c.players || []).map((x) => `<tr><td class="l">${esc(x.Slug)}</td><td>${x.Season}/${String((x.Season + 1) % 100).padStart(2, "0")}</td>
+    <td>${x.Games}</td><td>${x.Lines}</td><td>${x.Players}</td></tr>`).join("");
+  view.innerHTML = `<h1>Data</h1><p class="muted">Počítám přehled (projde celou databázi, trvá to desítky sekund)…</p>`;
     setTimeout(() => { if (location.hash === "#/data") route(); }, 8000);
     return;
   }
@@ -258,6 +260,9 @@ async function renderData() {
     <div class="tbl"><table><tr><th class="l">Liga</th><th class="l">Zdroj</th><th class="l">Kniha</th><th class="l">Snímek</th><th>Zápasů</th><th>Cen</th><th>Poslední</th></tr>${odds}</table></div>
     <h2>Predikce modelu</h2>
     <div class="tbl"><table><tr><th class="l">Model</th><th>Predikcí</th><th>Poslední</th></tr>${preds}</table></div>
+    <h2>Hráči v poli</h2>
+    <p class="sub">Řádky z boxscore NHL po zápase: TOI, góly, asistence, +/−, střely, tresty. Základ pro sestavy a absence.</p>
+    <div class="tbl"><table><tr><th class="l">Liga</th><th>Sezona</th><th>Zápasů</th><th>Řádků</th><th>Hráčů</th></tr>${players || '<tr><td class="l muted" colspan="5">zatím nic</td></tr>'}</table></div>
     <h2>Trenéři</h2>
     <div class="tbl"><table><tr><th class="l">Liga</th><th>Období</th><th>Trenérů</th></tr>${coaches}</table></div>`;
 }
