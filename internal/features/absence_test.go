@@ -83,3 +83,27 @@ func TestAbsenceOtherSeasonIgnored(t *testing.T) {
 		t.Fatalf("previous season counted: %+v", a)
 	}
 }
+
+func TestAbsenceTimeline(t *testing.T) {
+	var ms []canon.Match
+	for d := 1; d <= 8; d++ {
+		players := []canon.PlayerMinutes{{PlayerID: 1, Position: "C", TOISeconds: 1200}, {PlayerID: 2, Position: "C", TOISeconds: 1100},
+			{PlayerID: 3, Position: "C", TOISeconds: 900}, {PlayerID: 4, Position: "D", TOISeconds: 500}}
+		if d == 8 {
+			players = players[1:] // the top player sits out game 8
+		}
+		ms = append(ms, canon.Match{ID: int64(d), Season: 2025, StartAt: time.Date(2025, 10, d, 0, 0, 0, 0, time.UTC), HomeTeam: 1, AwayTeam: int32(10 + d),
+			Lineups: []canon.Lineup{{Side: canon.Home, Players: players}}})
+	}
+	tl := AbsenceTimeline(ms)
+	if _, ok := tl[3]; ok {
+		t.Fatal("too few earlier games must give nothing")
+	}
+	s := tl[8][canon.Home]
+	if !s.Known || s.Estimate != 0 || s.Confirmed <= 0 {
+		t.Fatalf("game 8: %+v", s)
+	}
+	if _, ok := tl[8][canon.Away]; ok {
+		t.Fatal("away side without lineup history")
+	}
+}

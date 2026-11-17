@@ -31,3 +31,12 @@ JOIN teams t ON t.id = ct.team_id
 JOIN leagues l ON l.id = t.league_id
 WHERE l.slug = $1 AND ct.role = 'head'
 ORDER BY ct.team_id, ct.from_date;
+
+-- name: ListLeagueSkaterLines :many
+-- Every skater line of a league (absences backtest, plan 04 L4).
+SELECT pm.game_id, pm.side, pm.player_id, pm.position, pm.toi_seconds
+FROM player_match_stats pm
+JOIN games g ON g.id = pm.game_id
+JOIN leagues l ON l.id = g.league_id
+WHERE l.slug = $1
+ORDER BY pm.game_id, pm.side, pm.player_id;
