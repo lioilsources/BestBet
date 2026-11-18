@@ -86,6 +86,7 @@ type Game struct {
 	SwehockeyID       *int32
 	UpdatedAt         pgtype.Timestamptz
 	NhlID             *int64
+	AsaID             *string
 }
 
 type Goaly struct {

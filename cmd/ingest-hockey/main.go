@@ -250,7 +250,7 @@ func cmdLeagues(ctx context.Context, st *store.Store, leagues []config.League, c
 				continue
 			}
 			id := int32(best.ID)
-			if _, err := st.Q.UpsertLeague(ctx, dbq.UpsertLeagueParams{Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role, ApihockeyID: &id}); err != nil {
+			if _, err := st.Q.UpsertLeague(ctx, dbq.UpsertLeagueParams{Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role, ApihockeyID: &id, Sport: l.Sport}); err != nil {
 				return err
 			}
 			var ss []string
@@ -283,7 +283,7 @@ func cmdLeagues(ctx context.Context, st *store.Store, leagues []config.League, c
 			}
 			// A unique candidate is stored like the API-HOCKEY id (COALESCE keeps the rest).
 			id := int32(hits[0].TournamentID)
-			if _, err := st.Q.UpsertLeague(ctx, dbq.UpsertLeagueParams{Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role, OddspapiTournamentID: &id}); err != nil {
+			if _, err := st.Q.UpsertLeague(ctx, dbq.UpsertLeagueParams{Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role, OddspapiTournamentID: &id, Sport: l.Sport}); err != nil {
 				return err
 			}
 			fmt.Printf("  -> stored; put `tournament_id: %d` into config\n", id)

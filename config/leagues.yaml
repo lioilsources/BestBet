@@ -83,9 +83,34 @@ leagues:
     apihockey: {id: 57, search: NHL, country: USA}
     oddspapi: {tournament_id: 234, search: NHL, category: USA}
 
+  # Plan 05: first soccer league. American Soccer Analysis owns games (2013-),
+  # football-data.co.uk adds closing 1X2 prices. Season = the year it ends
+  # (plan 05 §2): 2013..2026 calendar years, 2027 the transition, then 2028 = 2027/28.
+  - slug: usa-mls
+    name: MLS
+    country: USA
+    sport: soccer
+    role: semi_efficient
+    tz: America/New_York
+    seasons: [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    asa: mls
+    fdcouk: {url: "https://www.football-data.co.uk/new/USA.csv", league: MLS}
+    oddspapi: {tournament_id: 242, search: MLS, category: USA}
+
 # Manual spellings that fuzzy matching cannot resolve: source -> league -> alias -> canonical name.
 aliases:
   nhl:
     nhl:
       # Utah renamed its team for 2025/26; same franchise, one team row.
       Mammoth: Utah Hockey Club
+  # Plan 05 S1: football-data.co.uk and OddsPapi spellings of MLS clubs (canonical = ASA).
+  fdcouk:
+    usa-mls:
+      Atlanta Utd: Atlanta United FC
+      DC United: D.C. United
+      Los Angeles Galaxy: LA Galaxy
+  oddspapi:
+    usa-mls:
+      DC United: D.C. United
+      Los Angeles Galaxy: LA Galaxy
+      Saint Louis City SC: St. Louis City SC

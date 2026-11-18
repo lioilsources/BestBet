@@ -1,8 +1,9 @@
 -- name: UpsertLeague :one
-INSERT INTO leagues (slug, name, country, role, apihockey_id, oddspapi_tournament_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO leagues (slug, name, country, role, apihockey_id, oddspapi_tournament_id, sport)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (slug) DO UPDATE SET
     name = EXCLUDED.name,
+    sport = EXCLUDED.sport,
     country = EXCLUDED.country,
     role = EXCLUDED.role,
     apihockey_id = COALESCE(EXCLUDED.apihockey_id, leagues.apihockey_id),
@@ -273,3 +274,37 @@ SELECT id, nhl_id, home_team_id, away_team_id, start_at
 FROM games
 WHERE nhl_id IS NOT NULL AND status = 'scheduled' AND start_at >= $1 AND start_at < $2
 ORDER BY start_at;
+
+-- name: GetGameByAsaID :one
+SELECT * FROM games WHERE asa_id = $1;
+
+-- name: UpsertGameASA :one
+-- Soccer games are owned by American Soccer Analysis (plan 05 S1): the latest
+-- pull overwrites every result field.
+INSERT INTO games (
+    league_id, season, start_at, status, home_team_id, away_team_id,
+    home_score, away_score, home_60, away_60, period_scores,
+    ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, asa_id
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+)
+ON CONFLICT (asa_id) DO UPDATE SET
+    season = EXCLUDED.season,
+    start_at = EXCLUDED.start_at,
+    status = EXCLUDED.status,
+    home_team_id = EXCLUDED.home_team_id,
+    away_team_id = EXCLUDED.away_team_id,
+    home_score = EXCLUDED.home_score,
+    away_score = EXCLUDED.away_score,
+    home_60 = EXCLUDED.home_60,
+    away_60 = EXCLUDED.away_60,
+    period_scores = EXCLUDED.period_scores,
+    ot_home = EXCLUDED.ot_home,
+    ot_away = EXCLUDED.ot_away,
+    so_winner = EXCLUDED.so_winner,
+    decided_in = EXCLUDED.decided_in,
+    ot_type = EXCLUDED.ot_type,
+    phase = EXCLUDED.phase,
+    stage_raw = EXCLUDED.stage_raw,
+    updated_at = now()
+RETURNING id;

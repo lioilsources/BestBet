@@ -68,7 +68,7 @@ func (s *Store) SyncLeagues(ctx context.Context, cfg config.File) (map[string]db
 	out := map[string]dbq.League{}
 	for _, l := range cfg.Leagues {
 		row, err := s.Q.UpsertLeague(ctx, dbq.UpsertLeagueParams{
-			Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role,
+			Slug: l.Slug, Name: l.Name, Country: l.Country, Role: l.Role, Sport: l.Sport,
 			ApihockeyID:          nonZero(l.APIHockey.ID),
 			OddspapiTournamentID: nonZero(l.OddsPapi.TournamentID),
 		})

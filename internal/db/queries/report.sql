@@ -24,6 +24,7 @@ SELECT
     l.slug,
     l.name,
     l.role,
+    l.sport,
     fin.season,
     count(*)::bigint AS games,
     count(og.game_id)::bigint AS games_with_odds,
@@ -37,7 +38,7 @@ JOIN games g ON g.id = fin.id
 LEFT JOIN odds_games og ON og.game_id = fin.id
 LEFT JOIN goalie_games gg ON gg.game_id = fin.id
 LEFT JOIN skater_games sg ON sg.game_id = fin.id
-GROUP BY l.slug, l.name, l.role, fin.season
+GROUP BY l.slug, l.name, l.role, l.sport, fin.season
 ORDER BY l.slug, fin.season;
 
 -- name: MarginByLeague :many
@@ -103,3 +104,52 @@ JOIN leagues l ON l.id = t.league_id
 WHERE t.apihockey_id IS NULL
   AND EXISTS (SELECT 1 FROM teams t2 WHERE t2.league_id = t.league_id AND t2.apihockey_id IS NOT NULL)
 ORDER BY l.slug, t.name;
+
+-- name: SoccerSeasons :many
+-- Plan 05 S1 gate Z1: halves, football-data.co.uk join and Pinnacle closing per soccer season.
+WITH pin AS (
+    SELECT o.game_id
+    FROM odds_snapshots o
+    WHERE o.book = 'pinnacle' AND o.market = '1x2' AND o.snapshot_kind = 'closing' AND o.game_id IS NOT NULL
+    GROUP BY o.game_id
+    HAVING count(DISTINCT o.selection) = 3
+),
+fd AS (
+    SELECT DISTINCT fl.game_id FROM fixture_links fl WHERE fl.source = 'fdcouk' AND fl.game_id IS NOT NULL
+)
+SELECT
+    l.slug,
+    g.season,
+    count(*)::bigint AS games,
+    count(*) FILTER (WHERE jsonb_array_length(g.period_scores) = 2)::bigint AS with_halves,
+    count(*) FILTER (WHERE g.phase <> 'regular')::bigint AS knockout,
+    count(*) FILTER (WHERE g.decided_in = 'ot')::bigint AS extra_time,
+    count(*) FILTER (WHERE g.decided_in = 'so')::bigint AS penalties,
+    count(fd.game_id)::bigint AS with_fdcouk,
+    count(pin.game_id)::bigint AS with_pinnacle
+FROM games g
+JOIN leagues l ON l.id = g.league_id
+LEFT JOIN fd ON fd.game_id = g.id
+LEFT JOIN pin ON pin.game_id = g.id
+WHERE l.sport = 'soccer' AND g.status = 'finished'
+GROUP BY l.slug, g.season
+ORDER BY l.slug, g.season;
+
+-- name: SoccerPinnacleClosing :many
+-- Closing Pinnacle 1X2 and the 90-minute result of finished soccer games (market log-loss, gate Z1).
+SELECT
+    l.slug,
+    g.season,
+    g.home_60::int AS home_60,
+    g.away_60::int AS away_60,
+    (max(o.price) FILTER (WHERE o.selection = 'home'))::float8 AS price_home,
+    (max(o.price) FILTER (WHERE o.selection = 'draw'))::float8 AS price_draw,
+    (max(o.price) FILTER (WHERE o.selection = 'away'))::float8 AS price_away
+FROM games g
+JOIN leagues l ON l.id = g.league_id
+JOIN odds_snapshots o ON o.game_id = g.id
+WHERE l.sport = 'soccer' AND g.status = 'finished' AND g.home_60 IS NOT NULL AND g.away_60 IS NOT NULL
+  AND o.book = 'pinnacle' AND o.market = '1x2' AND o.snapshot_kind = 'closing' AND o.captured_at < g.start_at
+GROUP BY l.slug, g.season, g.id, g.home_60, g.away_60
+HAVING count(DISTINCT o.selection) = 3
+ORDER BY l.slug, g.season, g.id;

@@ -76,7 +76,7 @@ type Game struct {
 // New builds the world for the configured leagues and seasons.
 func New(cfg config.File, seed uint64, now func() time.Time) *World {
 	w := &World{Seed: seed, Now: now}
-	for li, lc := range cfg.Leagues {
+	for li, lc := range cfg.Of(config.SportHockey) {
 		r := rand.New(rand.NewPCG(seed, uint64(li)+1))
 		l := League{Cfg: lc, APIID: 900 + li, TournamentID: 9000 + li}
 		for t := 0; t < 12; t++ {

@@ -35,6 +35,7 @@ SELECT
     l.slug,
     l.name,
     l.role,
+    l.sport,
     fin.season,
     count(*)::bigint AS games,
     count(og.game_id)::bigint AS games_with_odds,
@@ -48,7 +49,7 @@ JOIN games g ON g.id = fin.id
 LEFT JOIN odds_games og ON og.game_id = fin.id
 LEFT JOIN goalie_games gg ON gg.game_id = fin.id
 LEFT JOIN skater_games sg ON sg.game_id = fin.id
-GROUP BY l.slug, l.name, l.role, fin.season
+GROUP BY l.slug, l.name, l.role, l.sport, fin.season
 ORDER BY l.slug, fin.season
 `
 
@@ -56,6 +57,7 @@ type CoverageByLeagueSeasonRow struct {
 	Slug             string
 	Name             string
 	Role             string
+	Sport            string
 	Season           int32
 	Games            int64
 	GamesWithOdds    int64
@@ -78,6 +80,7 @@ func (q *Queries) CoverageByLeagueSeason(ctx context.Context) ([]CoverageByLeagu
 			&i.Slug,
 			&i.Name,
 			&i.Role,
+			&i.Sport,
 			&i.Season,
 			&i.Games,
 			&i.GamesWithOdds,
@@ -233,6 +236,137 @@ func (q *Queries) MarketsByLeague(ctx context.Context) ([]MarketsByLeagueRow, er
 			&i.Market,
 			&i.Games,
 			&i.Books,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const soccerPinnacleClosing = `-- name: SoccerPinnacleClosing :many
+SELECT
+    l.slug,
+    g.season,
+    g.home_60::int AS home_60,
+    g.away_60::int AS away_60,
+    (max(o.price) FILTER (WHERE o.selection = 'home'))::float8 AS price_home,
+    (max(o.price) FILTER (WHERE o.selection = 'draw'))::float8 AS price_draw,
+    (max(o.price) FILTER (WHERE o.selection = 'away'))::float8 AS price_away
+FROM games g
+JOIN leagues l ON l.id = g.league_id
+JOIN odds_snapshots o ON o.game_id = g.id
+WHERE l.sport = 'soccer' AND g.status = 'finished' AND g.home_60 IS NOT NULL AND g.away_60 IS NOT NULL
+  AND o.book = 'pinnacle' AND o.market = '1x2' AND o.snapshot_kind = 'closing' AND o.captured_at < g.start_at
+GROUP BY l.slug, g.season, g.id, g.home_60, g.away_60
+HAVING count(DISTINCT o.selection) = 3
+ORDER BY l.slug, g.season, g.id
+`
+
+type SoccerPinnacleClosingRow struct {
+	Slug      string
+	Season    int32
+	Home60    int32
+	Away60    int32
+	PriceHome float64
+	PriceDraw float64
+	PriceAway float64
+}
+
+// Closing Pinnacle 1X2 and the 90-minute result of finished soccer games (market log-loss, gate Z1).
+func (q *Queries) SoccerPinnacleClosing(ctx context.Context) ([]SoccerPinnacleClosingRow, error) {
+	rows, err := q.db.Query(ctx, soccerPinnacleClosing)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SoccerPinnacleClosingRow
+	for rows.Next() {
+		var i SoccerPinnacleClosingRow
+		if err := rows.Scan(
+			&i.Slug,
+			&i.Season,
+			&i.Home60,
+			&i.Away60,
+			&i.PriceHome,
+			&i.PriceDraw,
+			&i.PriceAway,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const soccerSeasons = `-- name: SoccerSeasons :many
+WITH pin AS (
+    SELECT o.game_id
+    FROM odds_snapshots o
+    WHERE o.book = 'pinnacle' AND o.market = '1x2' AND o.snapshot_kind = 'closing' AND o.game_id IS NOT NULL
+    GROUP BY o.game_id
+    HAVING count(DISTINCT o.selection) = 3
+),
+fd AS (
+    SELECT DISTINCT fl.game_id FROM fixture_links fl WHERE fl.source = 'fdcouk' AND fl.game_id IS NOT NULL
+)
+SELECT
+    l.slug,
+    g.season,
+    count(*)::bigint AS games,
+    count(*) FILTER (WHERE jsonb_array_length(g.period_scores) = 2)::bigint AS with_halves,
+    count(*) FILTER (WHERE g.phase <> 'regular')::bigint AS knockout,
+    count(*) FILTER (WHERE g.decided_in = 'ot')::bigint AS extra_time,
+    count(*) FILTER (WHERE g.decided_in = 'so')::bigint AS penalties,
+    count(fd.game_id)::bigint AS with_fdcouk,
+    count(pin.game_id)::bigint AS with_pinnacle
+FROM games g
+JOIN leagues l ON l.id = g.league_id
+LEFT JOIN fd ON fd.game_id = g.id
+LEFT JOIN pin ON pin.game_id = g.id
+WHERE l.sport = 'soccer' AND g.status = 'finished'
+GROUP BY l.slug, g.season
+ORDER BY l.slug, g.season
+`
+
+type SoccerSeasonsRow struct {
+	Slug         string
+	Season       int32
+	Games        int64
+	WithHalves   int64
+	Knockout     int64
+	ExtraTime    int64
+	Penalties    int64
+	WithFdcouk   int64
+	WithPinnacle int64
+}
+
+// Plan 05 S1 gate Z1: halves, football-data.co.uk join and Pinnacle closing per soccer season.
+func (q *Queries) SoccerSeasons(ctx context.Context) ([]SoccerSeasonsRow, error) {
+	rows, err := q.db.Query(ctx, soccerSeasons)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SoccerSeasonsRow
+	for rows.Next() {
+		var i SoccerSeasonsRow
+		if err := rows.Scan(
+			&i.Slug,
+			&i.Season,
+			&i.Games,
+			&i.WithHalves,
+			&i.Knockout,
+			&i.ExtraTime,
+			&i.Penalties,
+			&i.WithFdcouk,
+			&i.WithPinnacle,
 		); err != nil {
 			return nil, err
 		}

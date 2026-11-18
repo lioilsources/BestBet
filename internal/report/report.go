@@ -21,6 +21,8 @@ type Data struct {
 	Joins       []dbq.JoinRateBySourceRow
 	Unmatched   []dbq.UnmatchedFixturesRow
 	NewTeams    []dbq.TeamsCreatedBySecondaryRow
+	Soccer      []dbq.SoccerSeasonsRow
+	SoccerClose []dbq.SoccerPinnacleClosingRow
 }
 
 // Load runs the report queries.
@@ -44,6 +46,12 @@ func Load(ctx context.Context, q *dbq.Queries, now time.Time) (Data, error) {
 	}
 	if d.NewTeams, err = q.TeamsCreatedBySecondary(ctx); err != nil {
 		return d, fmt.Errorf("new teams: %w", err)
+	}
+	if d.Soccer, err = q.SoccerSeasons(ctx); err != nil {
+		return d, fmt.Errorf("soccer seasons: %w", err)
+	}
+	if d.SoccerClose, err = q.SoccerPinnacleClosing(ctx); err != nil {
+		return d, fmt.Errorf("soccer closing: %w", err)
 	}
 	return d, nil
 }
@@ -143,7 +151,7 @@ func Render(d Data) string {
 	sums := Summarise(d)
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format, a...) }
 
-	w("# DATA_M0 — pokrytí dat (hokej)\n\n")
+	w("# DATA_M0 — pokrytí dat (hokej a fotbal)\n\n")
 	w("Vygenerováno `ingest-hockey report` %s. Soubor je generovaný, ručně ho neupravuj; komentáře patří do `docs/M0.md`.\n\n", d.GeneratedAt.UTC().Format("2006-01-02 15:04 UTC"))
 
 	w("## Souhrn per liga\n\n")
@@ -177,7 +185,7 @@ func Render(d Data) string {
 
 	w("\n## Sezony\n\n| Liga | Sezona | Zápasů | S kurzy | S brankáři | S bruslaři | Mimo základní část | Po 60 min nerozhodnuto |\n|---|---|---|---|---|---|---|---|\n")
 	for _, c := range d.Coverage {
-		w("| %s | %d/%02d | %d | %d | %d | %d | %d | %d |\n", c.Name, c.Season, (c.Season+1)%100, c.Games, c.GamesWithOdds, c.GamesWithGoalies, c.GamesWithSkaters, c.GamesNonRegular, c.GamesPast60)
+		w("| %s | %s | %d | %d | %d | %d | %d | %d |\n", c.Name, seasonLabel(c.Sport, c.Season), c.Games, c.GamesWithOdds, c.GamesWithGoalies, c.GamesWithSkaters, c.GamesNonRegular, c.GamesPast60)
 	}
 
 	w("\n## Trhy v kurzech\n\n| Liga | Trh | Zápasů | Knih |\n|---|---|---|---|\n")
@@ -194,6 +202,8 @@ func Render(d Data) string {
 		w("| %s | %s | %d | %d | %s |\n", j.Slug, j.Source, j.Fixtures, j.Matched, pctNaN(r))
 	}
 
+	renderSoccer(w, d)
+
 	if len(d.NewTeams) > 0 {
 		w("\n## Týmy známé jen sekundárnímu zdroji\n\nNejspíš chybí alias v `config/leagues.yaml`.\n\n")
 		for _, t := range d.NewTeams {
@@ -207,6 +217,14 @@ func Render(d Data) string {
 		}
 	}
 	return b.String()
+}
+
+// seasonLabel: hockey seasons span two years, MLS seasons are named by one.
+func seasonLabel(sport string, season int32) string {
+	if sport == "soccer" {
+		return fmt.Sprintf("%d", season)
+	}
+	return fmt.Sprintf("%d/%02d", season, (season+1)%100)
 }
 
 func pct(v float64) string { return fmt.Sprintf("%.0f %%", 100*v) }

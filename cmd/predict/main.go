@@ -49,7 +49,7 @@ func run() error {
 	}
 	defer st.Close()
 	now := time.Now().UTC()
-	for _, l := range cfg.Leagues {
+	for _, l := range cfg.Of(config.SportHockey) {
 		if *league != "" && l.Slug != *league {
 			continue
 		}

@@ -14,7 +14,24 @@ Kanonické struktury jsou v `internal/canon`. Model (`internal/model`, `internal
 | `Season` | rok začátku: 2025 = 2025/26 |
 | `StartAt` | UTC |
 
-`Played()` je pravda, když existují `Reg` a tři třetiny. Zápas bez výsledku je jen vstup pro predikci.
+`Played()` je pravda, když existují `Reg` a tři třetiny (hokej) nebo dva poločasy (fotbal). Zápas bez výsledku je jen vstup pro predikci.
+
+### Fotbal (plán 05)
+
+Stejné sloupce `games` a stejná pole `canon.Match`, jiný význam:
+
+| Pole | Fotbal |
+|---|---|
+| `Periods` | 1. a 2. poločas (z polí „skóre před střelou“ v ASA); zápas, kde nesedí s konečným skóre, je bez poločasů |
+| `Reg` (`home_60/away_60`) | skóre po základní hrací době, 90 min a nastavení |
+| `ot_home/ot_away` | góly v prodloužení 2 × 15 min |
+| `Final` | `Reg` + prodloužení + 1 gól vítězi penalt, pokud je znám (ASA ani football-data.co.uk ho neuvádějí) |
+| `DecidedIn` | `reg`, `ot` (prodloužení), `so` (penalty) |
+| `ot_type` | `none`, `et_2x15` (zápas s prodloužením), `unknown` (bez poločasů) |
+| `Phase` | `regular`, `playoff` (ASA `knockout_game`) |
+| `Season` | u MLS rok konce sezony: 2013–2026 kalendářní roky, 2027 přechodná, 2028 = 2027/28 |
+
+Zavírací kurzy z football-data.co.uk nemají čas snímku; ukládají se jako `closing` minutu před výkopem (`source = fdcouk`, knihy `pinnacle`, `bet365`, `betfair_ex`, `market_max`, `market_avg`).
 
 ## Vyhodnocení trhů (hokej)
 

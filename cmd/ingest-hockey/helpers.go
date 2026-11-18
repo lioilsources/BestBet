@@ -27,11 +27,14 @@ import (
 
 func selectLeagues(cfg config.File, slug string) ([]config.League, error) {
 	if slug == "" {
-		return cfg.Leagues, nil
+		return cfg.Of(config.SportHockey), nil
 	}
 	l, ok := cfg.League(slug)
 	if !ok {
 		return nil, fmt.Errorf("unknown league %q", slug)
+	}
+	if l.Sport == config.SportSoccer {
+		return nil, fmt.Errorf("league %q is %s; use ingest-soccer", slug, l.Sport)
 	}
 	return []config.League{l}, nil
 }

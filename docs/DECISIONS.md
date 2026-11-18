@@ -2,6 +2,38 @@
 
 Rozhodnutí, která plán nechává na implementaci (01 §6: „rozhodni sám a zapiš“). Nejnovější nahoře.
 
+## 2026-11-18 (M4 S1: fotbal v datech)
+
+- **Vlastník fotbalových zápasů je ASA** (stabilní ID, 2013–2026, rozhodčí, trenéři, stadion), sloupec `games.asa_id` (migrace 0007). football-data.co.uk je zdroj kurzů: zápasy nezakládá a páruje se přes `fixture_links` (zdroj `fdcouk`), stejně jako OddsPapi u hokeje. Sezona 2012 je jen ve football-data, a proto se nepoužívá.
+- **Klíč sezony MLS je rok konce** (návrh z plánu 05 §2): 2013–2026 se nemění, přechodná sezona bude 2027, sezona 2027/28 bude 2028. V reportu se fotbalová sezona píše jedním rokem.
+- **Kanonický název týmu je podle ASA.** Aliasy pro football-data.co.uk: Atlanta Utd, DC United, Los Angeles Galaxy. Pro OddsPapi: DC United, Los Angeles Galaxy, Saint Louis City SC. Ostatní názvy spojí fuzzy párování; ověřeno na všech 31 klubech, žádné chybné spojení (pozor na LA Galaxy a LAFC).
+- **Poločasy:** skóre v poločase je skóre před první střelou 2. poločasu, konec hry je skóre zápasu podle ASA. Zápas, kde to nejde sladit, se uloží bez poločasů (`ot_type unknown`) a pro modely se nepočítá jako odehraný.
+- **Penalty v play-off:** vyřazovací zápas, který skončí nerozhodně, jde na penalty (`decided_in so`). Vítěze ani jeden bezplatný zdroj neuvádí, takže `so_winner` zůstává prázdný a `Final` je skóre po prodloužení.
+- `canon.Match.Played()` přijímá dva i tři úseky. Hokejové příkazy (`ingest-hockey`, `predict`, mock) berou jen hokejové ligy (`config.File.Of`); fotbal má vlastní `cmd/ingest-soccer`.
+- Zavírací kurzy z football-data.co.uk nemají čas snímku; ukládají se minutu před výkopem jako `closing`.
+
+## 2026-11-18 (M4 S0: zdroje dat MLS)
+
+| Téma | Zdroj | Sezony | Dotazy | Stav |
+|---|---|---|---|---|
+| Zápasy, skóre, play-off | football-data.co.uk `new/USA.csv` | 2012–2026 (6 326 zápasů) | 1 soubor | ověřeno |
+| Zavírací 1X2 | tamtéž: Pinnacle, max, průměr, Betfair Exchange, Bet365 | Pinnacle 2012–2025 (2025: 525/540), **2026 bez Pinnaclu** | – | ověřeno |
+| Rozhodčí, trenéři, stadion, xG | ASA `/mls/games`, `/mls/games/xgoals` | 2013–2026, rozhodčí a trenér u ≥ 98 % | 1 na sezonu | ověřeno |
+| Střely s minutou, střelcem, xG, typem akce a skóre před střelou | ASA `/mls/games/shots` (až 30 zápasů na dotaz) | 2013–2026 | asi 18 na sezonu | ověřeno |
+| Góly po poločasech | ASA střely: skóre před první střelou 2. poločasu | 2013–2026 | – | konečné skóre z těchto polí sedí u 521/522 (2024) a 536/540 (2025). Součet střel s `goal` sedí jen u 92 %, protože vlastní góly často chybí. |
+| Penalty, exekutor, skóre před ní, výsledek | ASA střely, `pattern_of_play = Penalty`; neproměněná na bránu (`shot_psxg > 0`) = chycená | 2013–2026 | – | 2024: 166 pokusů, 126 gólů; 2025: 164, 129. Brankáře a rozstřel ověřit v S6. |
+| Minuty hráčů po zápasech | ASA `/mls/players/xgoals?split_by_games=true&team_id=…` | 2013–2026 | 1 na tým a sezonu | ověřeno, bez příznaku start/střídání |
+| Přihrávky po zápasech (proxy držení) | ASA `/mls/teams/xpass?split_by_games=true` | 2013–2026 | 1 na sezonu | ověřeno, jen celý zápas |
+| Kurzy MLS: 1X2, AH, totaly, 1. a 2. poločas, rohy, karty | OddsPapi, sport 10, turnaj 242; Pinnacle, `betano.cz`, `merkurxtip.cz` | historie od ledna 2026 | 1 na zápas, odpověď ~11 MB | ověřeno na zápase 2026-11-08 |
+| Sestavy, formace, karty, fauly, rohy, držení, střídání | API-FOOTBALL | ? | 3 na zápas, 100/den | **neověřeno, chybí klíč** |
+
+- Pravidla 2026 (soutěžní řád MLS): stop po 5., 8., 11. a 13. žluté; v play-off po 3 žlutých, nulují se před finále konferencí. Divoká karta a první kolo (na 2 vítězství): remíza po 90 min jde rovnou na penalty. Semifinále a finále konferencí a MLS Cup: prodloužení 2 × 15 min, pak penalty. 5 střídání ve 3 oknech a 1 za otřes mozku. Na soupisce 20 hráčů. Termíny play-off 2026: divoká karta 18. 11., první kolo 20. 11.–2. 12., finále 18. 12.
+- Kdy se zveřejňuje sestava, řád neuvádí.
+- Mapování na `games`: penalty po remíze v 90 min = `decided_in so`, prodloužení = `ot`. Stejně jako u hokeje, `home_60/away_60` = skóre po základní době (90 min a nastavení).
+- **Brána Z0a: zatím neprošla.** Zdarma bez klíče je pokryté skóre, poločasy, penalty s exekutorem a skóre, rozhodčí, trenéři, xG a proxy držení. Pro formace, karty, fauly, rohy a sestavy je jediný bezplatný kandidát API-FOOTBALL a k němu chybí klíč. Neoficiální JSON ESPN a webu ligy se nepoužívají (podmínky užití, plán 05 §6).
+- **Brána Z0b: neověřeno** ze stejného důvodu. Nejbližší příležitost je první kolo play-off 20. 11.–2. 12., jinak až únor 2027.
+- Pinnacle 2026 se doplní z historie OddsPapi (asi 510 dotazů, ~5,6 GB cache). Rozhodne se v S1 podle kvóty; výsledky bez Pinnaclu se do hodnocení proti trhu nepočítají.
+
 ## 2026-11-17 (M3b L5: sestavy Allsvenskan před zápasem, neověřeno)
 
 - Sonda 2026-11-13 16:00–18:40 UTC: rozpis Allsvenskan stažený každých 10 min (17 snímků), zápasy dne začínaly 18:00 UTC.

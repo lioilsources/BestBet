@@ -168,7 +168,7 @@ func (q *Queries) DeleteLineupExcept(ctx context.Context, arg DeleteLineupExcept
 }
 
 const findGameByTeams = `-- name: FindGameByTeams :many
-SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id FROM games
+SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id, asa_id FROM games
 WHERE league_id = $1 AND home_team_id = $2 AND away_team_id = $3
   AND start_at BETWEEN $4::timestamptz AND $5::timestamptz
 ORDER BY start_at
@@ -225,6 +225,7 @@ func (q *Queries) FindGameByTeams(ctx context.Context, arg FindGameByTeamsParams
 			&i.SwehockeyID,
 			&i.UpdatedAt,
 			&i.NhlID,
+			&i.AsaID,
 		); err != nil {
 			return nil, err
 		}
@@ -248,7 +249,7 @@ func (q *Queries) GetCoachByName(ctx context.Context, name string) (int32, error
 }
 
 const getGameByApihockeyID = `-- name: GetGameByApihockeyID :one
-SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id FROM games WHERE apihockey_id = $1
+SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id, asa_id FROM games WHERE apihockey_id = $1
 `
 
 func (q *Queries) GetGameByApihockeyID(ctx context.Context, apihockeyID *int32) (Game, error) {
@@ -281,12 +282,52 @@ func (q *Queries) GetGameByApihockeyID(ctx context.Context, apihockeyID *int32) 
 		&i.SwehockeyID,
 		&i.UpdatedAt,
 		&i.NhlID,
+		&i.AsaID,
+	)
+	return i, err
+}
+
+const getGameByAsaID = `-- name: GetGameByAsaID :one
+SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id, asa_id FROM games WHERE asa_id = $1
+`
+
+func (q *Queries) GetGameByAsaID(ctx context.Context, asaID *string) (Game, error) {
+	row := q.db.QueryRow(ctx, getGameByAsaID, asaID)
+	var i Game
+	err := row.Scan(
+		&i.ID,
+		&i.LeagueID,
+		&i.Season,
+		&i.StartAt,
+		&i.Status,
+		&i.HomeTeamID,
+		&i.AwayTeamID,
+		&i.HomeScore,
+		&i.AwayScore,
+		&i.Home60,
+		&i.Away60,
+		&i.PeriodScores,
+		&i.OtHome,
+		&i.OtAway,
+		&i.SoWinner,
+		&i.DecidedIn,
+		&i.OtType,
+		&i.Phase,
+		&i.StageRaw,
+		&i.SeriesID,
+		&i.GameNo,
+		&i.SeriesScoreBefore,
+		&i.ApihockeyID,
+		&i.SwehockeyID,
+		&i.UpdatedAt,
+		&i.NhlID,
+		&i.AsaID,
 	)
 	return i, err
 }
 
 const getGameByNhlID = `-- name: GetGameByNhlID :one
-SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id FROM games WHERE nhl_id = $1
+SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id, asa_id FROM games WHERE nhl_id = $1
 `
 
 func (q *Queries) GetGameByNhlID(ctx context.Context, nhlID *int64) (Game, error) {
@@ -319,12 +360,13 @@ func (q *Queries) GetGameByNhlID(ctx context.Context, nhlID *int64) (Game, error
 		&i.SwehockeyID,
 		&i.UpdatedAt,
 		&i.NhlID,
+		&i.AsaID,
 	)
 	return i, err
 }
 
 const getGameBySwehockeyID = `-- name: GetGameBySwehockeyID :one
-SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id FROM games WHERE swehockey_id = $1
+SELECT id, league_id, season, start_at, status, home_team_id, away_team_id, home_score, away_score, home_60, away_60, period_scores, ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, series_id, game_no, series_score_before, apihockey_id, swehockey_id, updated_at, nhl_id, asa_id FROM games WHERE swehockey_id = $1
 `
 
 func (q *Queries) GetGameBySwehockeyID(ctx context.Context, swehockeyID *int32) (Game, error) {
@@ -357,6 +399,7 @@ func (q *Queries) GetGameBySwehockeyID(ctx context.Context, swehockeyID *int32) 
 		&i.SwehockeyID,
 		&i.UpdatedAt,
 		&i.NhlID,
+		&i.AsaID,
 	)
 	return i, err
 }
@@ -733,7 +776,7 @@ func (q *Queries) ListAliases(ctx context.Context, leagueID int32) ([]TeamAlias,
 }
 
 const listGamesStartingBetween = `-- name: ListGamesStartingBetween :many
-SELECT g.id, g.league_id, g.season, g.start_at, g.status, g.home_team_id, g.away_team_id, g.home_score, g.away_score, g.home_60, g.away_60, g.period_scores, g.ot_home, g.ot_away, g.so_winner, g.decided_in, g.ot_type, g.phase, g.stage_raw, g.series_id, g.game_no, g.series_score_before, g.apihockey_id, g.swehockey_id, g.updated_at, g.nhl_id, l.slug AS league_slug
+SELECT g.id, g.league_id, g.season, g.start_at, g.status, g.home_team_id, g.away_team_id, g.home_score, g.away_score, g.home_60, g.away_60, g.period_scores, g.ot_home, g.ot_away, g.so_winner, g.decided_in, g.ot_type, g.phase, g.stage_raw, g.series_id, g.game_no, g.series_score_before, g.apihockey_id, g.swehockey_id, g.updated_at, g.nhl_id, g.asa_id, l.slug AS league_slug
 FROM games g JOIN leagues l ON l.id = g.league_id
 WHERE g.start_at BETWEEN $1::timestamptz AND $2::timestamptz
   AND g.status IN ('scheduled', 'live')
@@ -772,6 +815,7 @@ type ListGamesStartingBetweenRow struct {
 	SwehockeyID       *int32
 	UpdatedAt         pgtype.Timestamptz
 	NhlID             *int64
+	AsaID             *string
 	LeagueSlug        string
 }
 
@@ -811,6 +855,7 @@ func (q *Queries) ListGamesStartingBetween(ctx context.Context, arg ListGamesSta
 			&i.SwehockeyID,
 			&i.UpdatedAt,
 			&i.NhlID,
+			&i.AsaID,
 			&i.LeagueSlug,
 		); err != nil {
 			return nil, err
@@ -1159,6 +1204,87 @@ func (q *Queries) UpsertFixtureLink(ctx context.Context, arg UpsertFixtureLinkPa
 	return err
 }
 
+const upsertGameASA = `-- name: UpsertGameASA :one
+INSERT INTO games (
+    league_id, season, start_at, status, home_team_id, away_team_id,
+    home_score, away_score, home_60, away_60, period_scores,
+    ot_home, ot_away, so_winner, decided_in, ot_type, phase, stage_raw, asa_id
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+)
+ON CONFLICT (asa_id) DO UPDATE SET
+    season = EXCLUDED.season,
+    start_at = EXCLUDED.start_at,
+    status = EXCLUDED.status,
+    home_team_id = EXCLUDED.home_team_id,
+    away_team_id = EXCLUDED.away_team_id,
+    home_score = EXCLUDED.home_score,
+    away_score = EXCLUDED.away_score,
+    home_60 = EXCLUDED.home_60,
+    away_60 = EXCLUDED.away_60,
+    period_scores = EXCLUDED.period_scores,
+    ot_home = EXCLUDED.ot_home,
+    ot_away = EXCLUDED.ot_away,
+    so_winner = EXCLUDED.so_winner,
+    decided_in = EXCLUDED.decided_in,
+    ot_type = EXCLUDED.ot_type,
+    phase = EXCLUDED.phase,
+    stage_raw = EXCLUDED.stage_raw,
+    updated_at = now()
+RETURNING id
+`
+
+type UpsertGameASAParams struct {
+	LeagueID     int32
+	Season       int32
+	StartAt      pgtype.Timestamptz
+	Status       string
+	HomeTeamID   int32
+	AwayTeamID   int32
+	HomeScore    *int32
+	AwayScore    *int32
+	Home60       *int32
+	Away60       *int32
+	PeriodScores []byte
+	OtHome       *int32
+	OtAway       *int32
+	SoWinner     *string
+	DecidedIn    *string
+	OtType       *string
+	Phase        string
+	StageRaw     *string
+	AsaID        *string
+}
+
+// Soccer games are owned by American Soccer Analysis (plan 05 S1): the latest
+// pull overwrites every result field.
+func (q *Queries) UpsertGameASA(ctx context.Context, arg UpsertGameASAParams) (int64, error) {
+	row := q.db.QueryRow(ctx, upsertGameASA,
+		arg.LeagueID,
+		arg.Season,
+		arg.StartAt,
+		arg.Status,
+		arg.HomeTeamID,
+		arg.AwayTeamID,
+		arg.HomeScore,
+		arg.AwayScore,
+		arg.Home60,
+		arg.Away60,
+		arg.PeriodScores,
+		arg.OtHome,
+		arg.OtAway,
+		arg.SoWinner,
+		arg.DecidedIn,
+		arg.OtType,
+		arg.Phase,
+		arg.StageRaw,
+		arg.AsaID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const upsertGameApihockey = `-- name: UpsertGameApihockey :one
 INSERT INTO games (
     league_id, season, start_at, status, home_team_id, away_team_id,
@@ -1289,10 +1415,11 @@ func (q *Queries) UpsertGoalie(ctx context.Context, arg UpsertGoalieParams) erro
 }
 
 const upsertLeague = `-- name: UpsertLeague :one
-INSERT INTO leagues (slug, name, country, role, apihockey_id, oddspapi_tournament_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO leagues (slug, name, country, role, apihockey_id, oddspapi_tournament_id, sport)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (slug) DO UPDATE SET
     name = EXCLUDED.name,
+    sport = EXCLUDED.sport,
     country = EXCLUDED.country,
     role = EXCLUDED.role,
     apihockey_id = COALESCE(EXCLUDED.apihockey_id, leagues.apihockey_id),
@@ -1307,6 +1434,7 @@ type UpsertLeagueParams struct {
 	Role                 string
 	ApihockeyID          *int32
 	OddspapiTournamentID *int32
+	Sport                string
 }
 
 func (q *Queries) UpsertLeague(ctx context.Context, arg UpsertLeagueParams) (League, error) {
@@ -1317,6 +1445,7 @@ func (q *Queries) UpsertLeague(ctx context.Context, arg UpsertLeagueParams) (Lea
 		arg.Role,
 		arg.ApihockeyID,
 		arg.OddspapiTournamentID,
+		arg.Sport,
 	)
 	var i League
 	err := row.Scan(

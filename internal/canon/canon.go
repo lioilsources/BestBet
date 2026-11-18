@@ -36,7 +36,7 @@ type Match struct {
 	AwayTeam int32     `json:"away_team"`
 	Phase    string    `json:"phase"`
 
-	Periods   []Score `json:"periods,omitempty"`    // regulation periods 1..3
+	Periods   []Score `json:"periods,omitempty"`    // hockey periods 1..3 or soccer halves 1..2
 	Reg       *Score  `json:"reg,omitempty"`        // 60 min
 	Final     *Score  `json:"final,omitempty"`      // incl. OT and shootout winner goal
 	DecidedIn string  `json:"decided_in,omitempty"` // reg | ot | so
@@ -45,8 +45,9 @@ type Match struct {
 	Lineups []Lineup      `json:"lineups,omitempty"`
 }
 
-// Played reports whether a regulation result is known.
-func (m Match) Played() bool { return m.Reg != nil && len(m.Periods) == 3 }
+// Played reports whether a regulation result is known: three hockey periods
+// or two soccer halves (a soccer game without halves is not played for models).
+func (m Match) Played() bool { return m.Reg != nil && len(m.Periods) >= 2 }
 
 // GoalieStart is a goalie appearance in a game.
 type GoalieStart struct {

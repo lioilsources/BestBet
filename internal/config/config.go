@@ -11,6 +11,12 @@ import (
 	"github.com/lioilsources/BestBet/internal/hockey"
 )
 
+// Sports.
+const (
+	SportHockey = "hockey"
+	SportSoccer = "soccer"
+)
+
 // File is the whole config.
 type File struct {
 	Seasons []int    `yaml:"seasons"`
@@ -25,6 +31,7 @@ type League struct {
 	Name    string          `yaml:"name"`
 	Country string          `yaml:"country"`
 	Role    string          `yaml:"role"`
+	Sport   string          `yaml:"sport"` // hockey (default) | soccer
 	TZ      string          `yaml:"tz"`
 	OT      hockey.OTFormat `yaml:"ot"`
 	// Layers adopted for live predictions after the phase 2 ablation
@@ -36,6 +43,15 @@ type League struct {
 		Country string   `yaml:"country"`
 		Alt     []string `yaml:"alt"`
 	} `yaml:"apihockey"`
+	// ASA is the American Soccer Analysis league path (soccer only, e.g. "mls").
+	ASA string `yaml:"asa"`
+	// FDCOUK is the football-data.co.uk file URL and its League column (soccer only).
+	FDCOUK struct {
+		URL    string `yaml:"url"`
+		League string `yaml:"league"`
+	} `yaml:"fdcouk"`
+	// Seasons overrides the global season list for this league.
+	Seasons  []int `yaml:"seasons"`
 	OddsPapi struct {
 		TournamentID int    `yaml:"tournament_id"`
 		Search       string `yaml:"search"`
@@ -49,6 +65,21 @@ type SwehockeySchedule struct {
 	Season     int    `yaml:"season"`
 	ScheduleID int    `yaml:"schedule_id"`
 	Stage      string `yaml:"stage"`
+}
+
+// Of returns the configured leagues of one sport, in config order.
+func (f File) Of(sport string) []League {
+	var out []League
+	for _, l := range f.Leagues {
+		s := l.Sport
+		if s == "" { // configs built in code, not through Load
+			s = SportHockey
+		}
+		if s == sport {
+			out = append(out, l)
+		}
+	}
+	return out
 }
 
 // Location returns the league time zone.
@@ -71,11 +102,18 @@ func Load(path string) (File, error) {
 		return f, fmt.Errorf("parse config: %w", err)
 	}
 	seen := map[string]bool{}
-	for _, l := range f.Leagues {
+	for i, l := range f.Leagues {
 		if l.Slug == "" || seen[l.Slug] {
 			return f, fmt.Errorf("league slug %q empty or duplicate", l.Slug)
 		}
 		seen[l.Slug] = true
+		switch f.Leagues[i].Sport {
+		case "":
+			f.Leagues[i].Sport = SportHockey
+		case SportHockey, SportSoccer:
+		default:
+			return f, fmt.Errorf("league %s: sport %q", l.Slug, l.Sport)
+		}
 		if _, err := l.Location(); err != nil {
 			return f, err
 		}
